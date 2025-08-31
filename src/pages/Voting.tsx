@@ -181,23 +181,49 @@ export function Voting() {
         </CardContent>
       </Card>
 
-      {/* Voting grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {candidates.map((candidate) => {
-          const vote = getVoteForCandidate(candidate.id);
-          return (
-            <VotingCard
-              key={candidate.id}
-              user={candidate}
-              hasVoted={!!vote}
-              comment={vote?.comment}
-              onVote={handleVote}
-              onRemoveVote={handleRemoveVote}
-              disabled={currentPeriod.status !== 'OPEN'}
-            />
-          );
-        })}
-      </div>
+      {/* Voting list */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Candidatos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {candidates.map((candidate) => {
+              const vote = getVoteForCandidate(candidate.id);
+              return (
+                <div key={candidate.id} className="block md:hidden">
+                  <VotingCard
+                    user={candidate}
+                    hasVoted={!!vote}
+                    comment={vote?.comment}
+                    onVote={handleVote}
+                    onRemoveVote={handleRemoveVote}
+                    disabled={currentPeriod.status !== 'OPEN'}
+                  />
+                </div>
+              );
+            })}
+            
+            {/* Desktop view - single line */}
+            <div className="hidden md:block space-y-3">
+              {candidates.map((candidate) => {
+                const vote = getVoteForCandidate(candidate.id);
+                return (
+                  <VotingCard
+                    key={candidate.id}
+                    user={candidate}
+                    hasVoted={!!vote}
+                    comment={vote?.comment}
+                    onVote={handleVote}
+                    onRemoveVote={handleRemoveVote}
+                    disabled={currentPeriod.status !== 'OPEN'}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Voting summary for managers */}
       {user?.role === 'MANAGER' && (

@@ -155,10 +155,10 @@ export function Dashboard() {
 
         {canVote && (
           <StatsCard
-            title="Votos Pendientes"
+            title="Votos Disponibles"
             value={pendingVotes}
             icon={<Users className="h-6 w-6" />}
-            color={pendingVotes > 0 ? 'yellow' : 'green'}
+            color={pendingVotes > 0 ? 'blue' : 'green'}
           />
         )}
 
@@ -200,7 +200,7 @@ export function Dashboard() {
                     onClick={() => window.location.href = '/voting'}
                     disabled={pendingVotes === 0}
                   >
-                    {pendingVotes > 0 ? `Votar (${pendingVotes} pendientes)` : 'Votos completos'}
+                    {pendingVotes > 0 ? `Votar (${pendingVotes} disponibles)` : 'Votos completos'}
                   </Button>
                 </div>
               )}

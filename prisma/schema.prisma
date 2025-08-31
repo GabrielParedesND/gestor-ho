@@ -26,6 +26,8 @@ model User {
   team                Team?                @relation(fields: [teamId], references: [id])
   votesGiven          Vote[]               @relation("VoterVotes")
   votesReceived       Vote[]               @relation("TargetUserVotes")
+  nominationsGiven    Nomination[]         @relation("NominatorNominations")
+  nominationsReceived Nomination[]         @relation("NomineeNominations")
   candidates          Candidate[]
   tallies             Tally[]
   innovationPoints    InnovationPoint[]
@@ -64,6 +66,7 @@ model Period {
   updatedAt DateTime     @updatedAt @map("updated_at")
 
   // Relations
+  nominations         Nomination[]
   candidates          Candidate[]
   votes               Vote[]
   tallies             Tally[]
@@ -72,6 +75,25 @@ model Period {
   homeOfficeGrants    HomeOfficeGrant[]
 
   @@map("periods")
+}
+
+model Nomination {
+  id           String   @id @default(cuid())
+  periodId     String   @map("period_id")
+  nominatorId  String   @map("nominator_id")
+  nomineeId    String   @map("nominee_id")
+  reason       String
+  projectId    String?  @map("project_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  period    Period  @relation(fields: [periodId], references: [id])
+  nominator User    @relation("NominatorNominations", fields: [nominatorId], references: [id])
+  nominee   User    @relation("NomineeNominations", fields: [nomineeId], references: [id])
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  @@unique([periodId, nominatorId, nomineeId])
+  @@map("nominations")
 }
 
 model Candidate {
@@ -210,6 +232,23 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  status      ProjectStatus @default(ACTIVE)
+  startDate   DateTime? @map("start_date")
+  endDate     DateTime? @map("end_date")
+  createdBy   String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  nominations Nomination[]
+
+  @@map("projects")
+}
+
 model Setting {
   id          String   @id @default(cuid())
   key         String   @unique
@@ -256,4 +295,11 @@ enum GrantSource {
   SPECIAL
   POINTS
   BONUS
+}
+
+enum ProjectStatus {
+  ACTIVE
+  COMPLETED
+  PAUSED
+  CANCELLED
 }

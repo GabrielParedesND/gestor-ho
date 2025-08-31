@@ -70,7 +70,10 @@ export function Calendar() {
   const getRequestsForDate = (date: Date) => {
     return homeOfficeRequests.filter(request => {
       try {
-        return request.requestedDate && isSameDay(new Date(request.requestedDate), date);
+        if (!request.requestedDate) return false;
+        // Crear fecha sin zona horaria para evitar problemas de UTC
+        const requestDate = new Date(request.requestedDate + 'T00:00:00');
+        return isSameDay(requestDate, date);
       } catch {
         return false;
       }
@@ -239,8 +242,9 @@ export function Calendar() {
               <div className="text-2xl font-bold text-blue-600">
                 {homeOfficeRequests.filter(r => {
                   try {
-                    const requestDate = new Date(r.requestedDate);
-                    return r.requestedDate && isSameMonth(requestDate, currentDate);
+                    if (!r.requestedDate) return false;
+                    const requestDate = new Date(r.requestedDate + 'T00:00:00');
+                    return isSameMonth(requestDate, currentDate);
                   } catch {
                     return false;
                   }
@@ -252,8 +256,9 @@ export function Calendar() {
               <div className="text-2xl font-bold text-green-600">
                 {new Set(homeOfficeRequests.filter(r => {
                   try {
-                    const requestDate = new Date(r.requestedDate);
-                    return r.requestedDate && isSameMonth(requestDate, currentDate);
+                    if (!r.requestedDate) return false;
+                    const requestDate = new Date(r.requestedDate + 'T00:00:00');
+                    return isSameMonth(requestDate, currentDate);
                   } catch {
                     return false;
                   }
@@ -265,8 +270,9 @@ export function Calendar() {
               <div className="text-2xl font-bold text-purple-600">
                 {Math.round(homeOfficeRequests.filter(r => {
                   try {
-                    const requestDate = new Date(r.requestedDate);
-                    return r.requestedDate && isSameMonth(requestDate, currentDate);
+                    if (!r.requestedDate) return false;
+                    const requestDate = new Date(r.requestedDate + 'T00:00:00');
+                    return isSameMonth(requestDate, currentDate);
                   } catch {
                     return false;
                   }

@@ -80,7 +80,8 @@ export function Grants() {
         action: 'GRANT_REDEEMED',
         entity: 'home_office_grant',
         entityId: selectedGrant.id,
-        newValues: { requestedDate },
+        newValues: { requestedDate, redeemedAt: new Date() },
+        meta: { grantDays: selectedGrant.days, source: selectedGrant.source },
       });
 
       toast.success(`Grant utilizado para el ${requestedDate}`);

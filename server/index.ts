@@ -174,24 +174,9 @@ app.post('/api/periods', async (req, res) => {
         status: 'OPEN',
       },
     });
-
-    // Create candidates for all active members only
-    const users = await prisma.user.findMany({
-      where: {
-        active: true,
-        role: 'MEMBER',
-      },
-    });
-
-    const candidates = users.map(user => ({
-      userId: user.id,
-      periodId: period.id,
-      roleAtPeriod: user.role,
-    }));
-
-    await prisma.candidate.createMany({
-      data: candidates,
-    });
+    
+    // Ya no se crean candidatos automáticamente
+    // Los candidatos se crearán cuando tengan 2+ nominaciones
     
     res.json(period);
   } catch (error) {
@@ -234,6 +219,17 @@ app.post('/api/periods/:periodId/close', async (req, res) => {
       include: { user: true },
     });
 
+    // Seleccionar un voto global al azar de líderes/manager para descartar
+    const leaderManagerVotes = votes.filter(v => 
+      ['MANAGER', 'LEADER_DEV', 'LEADER_PO', 'LEADER_INFRA'].includes(v.voter?.role)
+    );
+    
+    let globalDiscardedVoterId = null;
+    if (leaderManagerVotes.length > 0) {
+      const randomIndex = Math.floor(Math.random() * leaderManagerVotes.length);
+      globalDiscardedVoterId = leaderManagerVotes[randomIndex].voterId;
+    }
+
     // Calculate results for each candidate
     const tallies = [];
     const grants = [];
@@ -241,8 +237,12 @@ app.post('/api/periods/:periodId/close', async (req, res) => {
     for (const candidate of candidates) {
       const userVotes = votes.filter(v => v.targetUserId === candidate.userId);
       const rawVotes = userVotes.length;
-      const countedVotes = Math.min(rawVotes, 4); // Max 4 votes count
-      const managerVote = userVotes.find(v => v.voter?.role === 'MANAGER');
+      
+      // Filtrar votos excluyendo el voto globalmente descartado
+      const finalVotes = userVotes.filter(v => v.voterId !== globalDiscardedVoterId);
+      
+      const countedVotes = finalVotes.length;
+      const managerVote = finalVotes.find(v => v.voter?.role === 'MANAGER');
       
       // Lógica de días según el flujo requerido:
       // 2 votos → 1 día
@@ -262,7 +262,7 @@ app.post('/api/periods/:periodId/close', async (req, res) => {
         userId: candidate.userId,
         rawVotes,
         countedVotes,
-        discardedVoterId: rawVotes > 4 ? userVotes[Math.floor(Math.random() * userVotes.length)].voterId : null,
+        discardedVoterId: globalDiscardedVoterId,
         managerIncluded: !!managerVote,
         resultDays,
         calculationSeed: `${periodId}-${candidate.userId}`,
@@ -313,6 +313,121 @@ app.post('/api/periods/:periodId/close', async (req, res) => {
   }
 });
 
+// Nominations routes
+app.post('/api/nominations', async (req, res) => {
+  try {
+    const { periodId, nominatorId, nomineeId, reason, projectId } = req.body;
+    
+    // Verificar que el nominador puede nominar (MANAGER, LEADER, ADMIN)
+    const nominator = await prisma.user.findUnique({ where: { id: nominatorId } });
+    if (!nominator || !['MANAGER', 'LEADER_DEV', 'LEADER_PO', 'LEADER_INFRA', 'ADMIN'].includes(nominator.role)) {
+      return res.status(403).json({ error: 'No tienes permisos para nominar' });
+    }
+    
+    // Verificar que el nominado es un MEMBER activo
+    const nominee = await prisma.user.findUnique({ where: { id: nomineeId } });
+    if (!nominee || nominee.role !== 'MEMBER' || !nominee.active) {
+      return res.status(400).json({ error: 'Solo se pueden nominar miembros activos' });
+    }
+    
+    const nomination = await prisma.nomination.create({
+      data: {
+        periodId,
+        nominatorId,
+        nomineeId,
+        reason,
+        projectId: projectId || null,
+      },
+      include: {
+        nominator: true,
+        nominee: true,
+        project: true,
+      },
+    });
+    
+    // Crear candidato inmediatamente con 1 nominación
+    await prisma.candidate.upsert({
+      where: {
+        userId_periodId: {
+          userId: nomineeId,
+          periodId,
+        },
+      },
+      update: {},
+      create: {
+        userId: nomineeId,
+        periodId,
+        roleAtPeriod: nominee.role,
+      },
+    });
+    
+    res.json(nomination);
+  } catch (error) {
+    console.error('Error creating nomination:', error);
+    if (error.code === 'P2002') {
+      res.status(400).json({ error: 'Ya has nominado a este usuario para este período' });
+    } else {
+      res.status(500).json({ error: 'Error al crear nominación' });
+    }
+  }
+});
+
+app.get('/api/periods/:periodId/nominations', async (req, res) => {
+  try {
+    const nominations = await prisma.nomination.findMany({
+      where: { periodId: req.params.periodId },
+      include: {
+        nominator: true,
+        nominee: true,
+        project: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(nominations);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener nominaciones' });
+  }
+});
+
+app.delete('/api/nominations/:id', async (req, res) => {
+  try {
+    const nomination = await prisma.nomination.findUnique({
+      where: { id: req.params.id },
+      include: { nominee: true },
+    });
+    
+    if (!nomination) {
+      return res.status(404).json({ error: 'Nominación no encontrada' });
+    }
+    
+    await prisma.nomination.delete({
+      where: { id: req.params.id },
+    });
+    
+    // Verificar si el nominado aún tiene nominaciones
+    const remainingNominations = await prisma.nomination.count({
+      where: {
+        periodId: nomination.periodId,
+        nomineeId: nomination.nomineeId,
+      },
+    });
+    
+    // Si no tiene nominaciones, eliminar candidato
+    if (remainingNominations === 0) {
+      await prisma.candidate.deleteMany({
+        where: {
+          userId: nomination.nomineeId,
+          periodId: nomination.periodId,
+        },
+      });
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar nominación' });
+  }
+});
+
 // Voting routes
 app.get('/api/periods/:periodId/votes', async (req, res) => {
   try {
@@ -340,7 +455,28 @@ app.get('/api/periods/:periodId/candidates', async (req, res) => {
       include: { user: true },
     });
     
-    res.json(candidates.map(c => c.user));
+    // Obtener nominaciones para cada candidato
+    const candidatesWithNominations = await Promise.all(
+      candidates.map(async (candidate) => {
+        const nominations = await prisma.nomination.findMany({
+          where: {
+            periodId: req.params.periodId,
+            nomineeId: candidate.userId,
+          },
+          include: { 
+            nominator: true,
+            project: true,
+          },
+        });
+        
+        return {
+          ...candidate.user,
+          nominations,
+        };
+      })
+    );
+    
+    res.json(candidatesWithNominations);
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener candidatos' });
   }
@@ -452,17 +588,7 @@ app.post('/api/grants/:id/redeem', async (req, res) => {
       },
     });
     
-    // Crear log de auditoría
-    await prisma.auditLog.create({
-      data: {
-        actor: { connect: { id: userId } },
-        action: 'GRANT_REDEEMED',
-        entity: 'homeOfficeGrant',
-        entityId: id,
-        newValues: JSON.stringify({ requestedDate, redeemedAt: new Date() }),
-        meta: JSON.stringify({ grantDays: grant.days, source: grant.source }),
-      },
-    });
+
     
     res.json(grant);
   } catch (error) {
@@ -756,6 +882,69 @@ app.post('/api/settings', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: 'Error al guardar configuraciones' });
+  }
+});
+
+// Projects routes
+app.get('/api/projects', async (req, res) => {
+  try {
+    const projects = await prisma.project.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+    res.json(projects);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al obtener proyectos' });
+  }
+});
+
+app.post('/api/projects', async (req, res) => {
+  try {
+    const { name, description, status, startDate, endDate, createdBy } = req.body;
+    
+    const project = await prisma.project.create({
+      data: {
+        name,
+        description,
+        status: status || 'ACTIVE',
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
+        createdBy,
+      },
+    });
+    res.json(project);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al crear proyecto' });
+  }
+});
+
+app.put('/api/projects/:id', async (req, res) => {
+  try {
+    const { name, description, status, startDate, endDate } = req.body;
+    
+    const project = await prisma.project.update({
+      where: { id: req.params.id },
+      data: {
+        name,
+        description,
+        status,
+        startDate: startDate ? new Date(startDate) : null,
+        endDate: endDate ? new Date(endDate) : null,
+      },
+    });
+    res.json(project);
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar proyecto' });
+  }
+});
+
+app.delete('/api/projects/:id', async (req, res) => {
+  try {
+    await prisma.project.delete({
+      where: { id: req.params.id },
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar proyecto' });
   }
 });
 

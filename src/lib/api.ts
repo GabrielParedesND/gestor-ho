@@ -111,7 +111,7 @@ class ApiClient {
       const query = available !== undefined ? `?available=${available}` : '';
       return await this.request(`/users/${userId}/grants${query}`);
     } catch (error) {
-      console.warn('Usando datos de respaldo para grants');
+      console.warn('Error al cargar grants');
       return [];
     }
   }
@@ -123,7 +123,7 @@ class ApiClient {
         body: JSON.stringify({ requestedDate, userId }),
       });
     } catch (error) {
-      console.warn('Redención de grant no disponible en modo de respaldo');
+      console.warn('Error al redimir grant');
       throw error;
     }
   }
@@ -132,7 +132,7 @@ class ApiClient {
     try {
       return await this.request(`/periods/${periodId}/results`);
     } catch (error) {
-      console.warn('Usando datos de respaldo para resultados');
+      console.warn('Error al cargar resultados');
       return [];
     }
   }
@@ -193,6 +193,49 @@ class ApiClient {
     return this.request('/audit');
   }
 
+  // Nominations
+  async createNomination(nominationData: any) {
+    return this.request('/nominations', {
+      method: 'POST',
+      body: JSON.stringify(nominationData),
+    });
+  }
+
+  async getNominations(periodId: string) {
+    return this.request(`/periods/${periodId}/nominations`);
+  }
+
+  async deleteNomination(id: string) {
+    return this.request(`/nominations/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // Projects
+  async getProjects() {
+    return this.request('/projects');
+  }
+
+  async createProject(projectData: any) {
+    return this.request('/projects', {
+      method: 'POST',
+      body: JSON.stringify(projectData),
+    });
+  }
+
+  async updateProject(id: string, projectData: any) {
+    return this.request(`/projects/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(projectData),
+    });
+  }
+
+  async deleteProject(id: string) {
+    return this.request(`/projects/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   // Settings
   async getSettings() {
     try {
@@ -210,7 +253,7 @@ class ApiClient {
         body: JSON.stringify({ settings, userId }),
       });
     } catch (error) {
-      console.warn('Guardado de configuraciones no disponible en modo de respaldo');
+      console.warn('Error al guardar configuraciones');
       throw error;
     }
   }
@@ -220,7 +263,7 @@ class ApiClient {
     try {
       return await this.request('/leaderboard/points');
     } catch (error) {
-      console.warn('Usando datos de respaldo para leaderboard de puntos');
+      console.warn('Error al cargar leaderboard de puntos');
       return [];
     }
   }
@@ -229,7 +272,7 @@ class ApiClient {
     try {
       return await this.request('/leaderboard/grants');
     } catch (error) {
-      console.warn('Usando datos de respaldo para leaderboard de grants');
+      console.warn('Error al cargar leaderboard de grants');
       return [];
     }
   }

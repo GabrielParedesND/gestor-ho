@@ -14,7 +14,6 @@ export function Settings() {
   const [settings, setSettings] = useState({
     system_name: 'Sistema de Incentivo HO',
     voting_deadline_hour: '17',
-    max_votes_per_candidate: '4',
     grant_expiry_days: '60',
     points_for_bonus_day: '10',
     points_for_approval: '5',
@@ -54,7 +53,7 @@ export function Settings() {
       toast.success('Configuración guardada correctamente');
     } catch (error) {
       console.error('Error saving settings:', error);
-      toast.error('Error al guardar la configuración (modo de respaldo activo)');
+      toast.error('Error al guardar la configuración');
     } finally {
       setLoading(false);
     }
@@ -65,7 +64,6 @@ export function Settings() {
       setSettings({
         system_name: 'Sistema de Incentivo HO',
         voting_deadline_hour: '17',
-        max_votes_per_candidate: '4',
         grant_expiry_days: '60',
         points_for_bonus_day: '10',
         points_for_approval: '5',
@@ -147,16 +145,7 @@ export function Settings() {
               help="Hora en formato 24h (ej. 17 para las 5:00 PM)"
             />
 
-            <Input
-              label="Máximo de votos por candidato"
-              type="number"
-              min="1"
-              max="10"
-              value={settings.max_votes_per_candidate}
-              onChange={(e) => setSettings({ ...settings, max_votes_per_candidate: e.target.value })}
-              required
-              help="Si se excede este número, se descartará un voto al azar"
-            />
+
           </CardContent>
         </Card>
 
@@ -251,23 +240,7 @@ export function Settings() {
           </CardContent>
         </Card>
 
-        <Card className="bg-yellow-50 border-yellow-200">
-          <CardContent>
-            <div className="flex items-start space-x-3">
-              <div className="bg-yellow-500 rounded-full p-1">
-                <SettingsIcon className="h-4 w-4 text-white" />
-              </div>
-              <div>
-                <h4 className="font-medium text-yellow-900">Modo de Desarrollo</h4>
-                <p className="text-sm text-yellow-800 mt-1">
-                  Actualmente el sistema está funcionando con datos simulados. 
-                  Para usar Supabase en producción, configura las variables de entorno 
-                  y cambia VITE_USE_MOCK_DATA a false.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+
 
         <div className="flex justify-end space-x-3">
           <Button

@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { User as UserIcon, MessageCircle, Check, X } from 'lucide-react';
+import { User as UserIcon, Check, X } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
 import { Textarea } from '../ui/Textarea';
+import { Modal } from '../ui/Modal';
+import { Badge } from '../ui/Badge';
 import type { User } from '@prisma/client';
 
 interface VotingCardProps {
@@ -22,29 +24,25 @@ export function VotingCard({
   onRemoveVote,
   disabled = false,
 }: VotingCardProps) {
-  const [showComment, setShowComment] = useState(false);
-  const [commentText, setCommentText] = useState(comment || '');
+  const [showVoteModal, setShowVoteModal] = useState(false);
+  const [commentText, setCommentText] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleVote = async () => {
+  const handleRemoveVote = async () => {
     setLoading(true);
     try {
-      if (hasVoted) {
-        await onRemoveVote(user.id);
-      } else {
-        await onVote(user.id, commentText);
-        setShowComment(false);
-      }
+      await onRemoveVote(user.id);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddComment = async () => {
+  const handleConfirmVote = async () => {
     setLoading(true);
     try {
-      await onVote(user.id, commentText);
-      setShowComment(false);
+      await onVote(user.id, commentText.trim() || undefined);
+      setShowVoteModal(false);
+      setCommentText('');
     } finally {
       setLoading(false);
     }
@@ -53,36 +51,96 @@ export function VotingCard({
   return (
     <Card className={`overflow-hidden transition-all duration-200 ${
       hasVoted ? 'border-green-500 bg-green-50' : 'hover:shadow-md hover:border-gray-300'
-    }`}>
-      {/* Header compacto */}
-      <div className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
-              {user.avatarUrl ? (
-                <img src={user.avatarUrl} alt={user.name} className="h-10 w-10 rounded-full" />
-              ) : (
-                <span className="text-gray-600 font-medium">
-                  {user.name.charAt(0).toUpperCase()}
-                </span>
-              )}
-            </div>
-            <div>
-              <h3 className="font-medium text-gray-900">{user.name}</h3>
-              <p className="text-xs text-gray-500">{user.email}</p>
-            </div>
+    } md:p-0`}>
+      {/* Layout responsive */}
+      <div className="md:flex md:items-center md:justify-between md:p-4">
+        {/* Info del usuario */}
+        <div className="flex items-center space-x-3 pb-3 md:pb-0 md:flex-1">
+          <div className="h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
+            {user.avatarUrl ? (
+              <img src={user.avatarUrl} alt={user.name} className="h-10 w-10 rounded-full" />
+            ) : (
+              <span className="text-gray-600 font-medium">
+                {user.name.charAt(0).toUpperCase()}
+              </span>
+            )}
+          </div>
+          <div className="flex-1">
+            <h3 className="font-medium text-gray-900">{user.name}</h3>
+            <p className="text-xs text-gray-500">{user.email}</p>
           </div>
           {hasVoted && (
-            <div className="flex items-center text-green-600">
+            <div className="flex items-center text-green-600 md:hidden">
               <Check className="h-4 w-4 mr-1" />
               <span className="text-sm font-medium">Votado</span>
             </div>
           )}
         </div>
+        
+        {/* Nominaciones */}
+        {(user as any).nominations && (user as any).nominations.length > 0 && (
+          <div className="mt-2 mb-4 space-y-1 md:flex-1 md:mx-4 md:mt-0 md:mb-0">
+            <p className="text-xs font-medium text-gray-600 md:mb-2">
+              Nominado por ({(user as any).nominations.length}):
+            </p>
+            <div className="md:flex md:flex-wrap md:gap-2">
+              {(user as any).nominations.map((nomination: any) => (
+                <div key={nomination.id} className="text-xs text-gray-600 bg-gray-100 rounded px-2 py-1 md:inline-block">
+                  <div className="mb-1 md:mb-0">
+                    <span className="font-medium">{nomination.nominator.name}:</span> "{nomination.reason}"
+                    {nomination.project && (
+                      <Badge variant="outline" size="sm" className="text-xs ml-1">
+                        {nomination.project.name}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        
+
+        
+        {/* Estado y botones */}
+        <div className="md:flex md:items-center md:space-x-4">
+
+          
+          {/* Estado y botones desktop */}
+          <div className="hidden md:block">
+            {hasVoted && (
+              <div className="flex items-center text-green-600 mb-2">
+                <Check className="h-4 w-4 mr-1" />
+                <span className="text-sm font-medium">Votado</span>
+              </div>
+            )}
+            {hasVoted ? (
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={handleRemoveVote}
+                loading={loading}
+                disabled={disabled}
+              >
+                <X className="h-3 w-3 mr-1" />
+                Quitar Voto
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                onClick={() => setShowVoteModal(true)}
+                disabled={disabled}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                👍 Votar
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Comentario */}
-      {comment && !showComment && (
+      {comment && (
         <div className="px-4 pb-3">
           <div className="bg-blue-50 border border-blue-200 rounded p-2">
             <p className="text-sm text-blue-800">“{comment}”</p>
@@ -91,78 +149,72 @@ export function VotingCard({
       )}
 
       {/* Botones */}
-      <div className="px-4 pb-4">
-        <div className="flex gap-2">
+      <div className="px-4 pb-4 md:hidden">
+        {hasVoted ? (
           <Button
-            variant="ghost"
+            variant="danger"
             size="sm"
-            onClick={() => setShowComment(!showComment)}
+            onClick={handleRemoveVote}
+            loading={loading}
             disabled={disabled}
-            className="flex-1 text-xs"
+            className="w-full text-xs"
           >
-            <MessageCircle className="h-3 w-3 mr-1" />
-            {showComment ? 'Cerrar' : 'Comentar'}
+            <X className="h-3 w-3 mr-1" />
+            Quitar Voto
           </Button>
-          
-          {hasVoted ? (
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={handleVote}
-              loading={loading}
-              disabled={disabled}
-              className="flex-1 text-xs"
-            >
-              <X className="h-3 w-3 mr-1" />
-              Quitar
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              onClick={handleVote}
-              loading={loading}
-              disabled={disabled}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white text-xs"
-            >
-              👍 Votar
-            </Button>
-          )}
-        </div>
+        ) : (
+          <Button
+            size="sm"
+            onClick={() => setShowVoteModal(true)}
+            disabled={disabled}
+            className="w-full bg-green-600 hover:bg-green-700 text-white text-xs"
+          >
+            👍 Votar
+          </Button>
+        )}
       </div>
 
-      {/* Área de comentario expandible */}
-      {showComment && (
-        <div className="border-t bg-gray-50 p-3">
+      {/* Modal de votación */}
+      <Modal
+        isOpen={showVoteModal}
+        onClose={() => {
+          setShowVoteModal(false);
+          setCommentText('');
+        }}
+        title={`Votar por ${user.name}`}
+      >
+        <div className="space-y-4">
+          <p className="text-gray-600">
+            ¿Deseas agregar un comentario opcional a tu voto?
+          </p>
+          
           <Textarea
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
-            placeholder="Comentario opcional..."
-            rows={2}
-            className="text-sm mb-2"
+            placeholder="Comentario opcional (ej: Excelente trabajo en el proyecto X)..."
+            rows={3}
           />
-          <div className="flex gap-2">
+          
+          <div className="flex justify-end space-x-3">
             <Button
               variant="ghost"
-              size="sm"
               onClick={() => {
-                setShowComment(false);
-                setCommentText(comment || '');
+                setShowVoteModal(false);
+                setCommentText('');
               }}
-              className="flex-1 text-xs"
             >
               Cancelar
             </Button>
             <Button
-              size="sm"
-              onClick={handleAddComment}
+              onClick={handleConfirmVote}
               loading={loading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs"
+              className="bg-green-600 hover:bg-green-700 text-white"
             >
-              {hasVoted ? 'Actualizar' : 'Confirmar'}
+              Confirmar Voto
             </Button>
           </div>
         </div>
-      )}
+      </Modal>
     </Card>
   );
 }

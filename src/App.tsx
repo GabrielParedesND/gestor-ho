@@ -17,6 +17,8 @@ import { Users } from './pages/Users';
 import { Periods } from './pages/Periods';
 import { Settings } from './pages/Settings';
 import { Calendar } from './pages/Calendar';
+import { Nominations } from './pages/Nominations';
+import { Projects } from './pages/Projects';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -48,6 +50,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
       <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+      <Route path="/nominations" element={<ProtectedRoute><Nominations /></ProtectedRoute>} />
       <Route path="/voting" element={<ProtectedRoute><Voting /></ProtectedRoute>} />
       <Route path="/initiatives" element={<ProtectedRoute><Initiatives /></ProtectedRoute>} />
       <Route path="/grants" element={<ProtectedRoute><Grants /></ProtectedRoute>} />
@@ -56,6 +59,7 @@ function AppRoutes() {
       <Route path="/results" element={<ProtectedRoute><Results /></ProtectedRoute>} />
       <Route path="/audit" element={<ProtectedRoute><Audit /></ProtectedRoute>} />
       <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
+      <Route path="/projects" element={<ProtectedRoute><Projects /></ProtectedRoute>} />
       <Route path="/periods" element={<ProtectedRoute><Periods /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
     </Routes>
