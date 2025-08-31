@@ -1,0 +1,259 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String?
+  role      UserRole @default(MEMBER)
+  teamId    String?  @map("team_id")
+  active    Boolean  @default(true)
+  avatarUrl String?  @map("avatar_url")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  team                Team?                @relation(fields: [teamId], references: [id])
+  votesGiven          Vote[]               @relation("VoterVotes")
+  votesReceived       Vote[]               @relation("TargetUserVotes")
+  candidates          Candidate[]
+  tallies             Tally[]
+  innovationPoints    InnovationPoint[]
+  initiatives         Initiative[]
+  homeOfficeGrants    HomeOfficeGrant[]
+  auditLogsAsActor    AuditLog[]           @relation("ActorAuditLogs")
+  initiativesApproved Initiative[]         @relation("ApproverInitiatives")
+  pointsApproved      InnovationPoint[]    @relation("ApproverPoints")
+  talliesDiscarded    Tally[]              @relation("DiscardedVoterTallies")
+
+  @@map("users")
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  users User[]
+
+  @@map("teams")
+}
+
+model Period {
+  id        String       @id @default(cuid())
+  weekLabel String       @map("week_label")
+  startDate DateTime     @map("start_date")
+  endDate   DateTime     @map("end_date")
+  status    PeriodStatus @default(OPEN)
+  timezone  String       @default("America/Mexico_City")
+  closedAt  DateTime?    @map("closed_at")
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+
+  // Relations
+  candidates          Candidate[]
+  votes               Vote[]
+  tallies             Tally[]
+  innovationPoints    InnovationPoint[]
+  initiatives         Initiative[]
+  homeOfficeGrants    HomeOfficeGrant[]
+
+  @@map("periods")
+}
+
+model Candidate {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  periodId     String   @map("period_id")
+  roleAtPeriod UserRole @map("role_at_period")
+  notes        String?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id])
+  period Period @relation(fields: [periodId], references: [id])
+
+  @@unique([userId, periodId])
+  @@map("candidates")
+}
+
+model Vote {
+  id           String   @id @default(cuid())
+  periodId     String   @map("period_id")
+  voterId      String   @map("voter_id")
+  targetUserId String   @map("target_user_id")
+  weight       Int      @default(1)
+  comment      String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  period     Period @relation(fields: [periodId], references: [id])
+  voter      User   @relation("VoterVotes", fields: [voterId], references: [id])
+  targetUser User   @relation("TargetUserVotes", fields: [targetUserId], references: [id])
+
+  @@unique([periodId, voterId, targetUserId])
+  @@map("votes")
+}
+
+model Tally {
+  id                String   @id @default(cuid())
+  periodId          String   @map("period_id")
+  userId            String   @map("user_id")
+  rawVotes          Int      @map("raw_votes")
+  countedVotes      Int      @map("counted_votes")
+  discardedVoterId  String?  @map("discarded_voter_id")
+  managerIncluded   Boolean  @map("manager_included")
+  resultDays        Int      @map("result_days")
+  calculationSeed   String?  @map("calculation_seed")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  // Relations
+  period         Period @relation(fields: [periodId], references: [id])
+  user           User   @relation(fields: [userId], references: [id])
+  discardedVoter User?  @relation("DiscardedVoterTallies", fields: [discardedVoterId], references: [id])
+
+  @@unique([periodId, userId])
+  @@map("tallies")
+}
+
+model InnovationPoint {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  periodId   String?   @map("period_id")
+  value      Int
+  reason     String
+  approvedBy String?   @map("approved_by")
+  approvedAt DateTime? @map("approved_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  user     User    @relation(fields: [userId], references: [id])
+  period   Period? @relation(fields: [periodId], references: [id])
+  approver User?   @relation("ApproverPoints", fields: [approvedBy], references: [id])
+
+  @@map("innovation_points")
+}
+
+model Initiative {
+  id            String            @id @default(cuid())
+  userId        String            @map("user_id")
+  periodId      String?           @map("period_id")
+  type          InitiativeType
+  title         String
+  description   String?
+  status        InitiativeStatus  @default(DRAFT)
+  kpiImpact     String?           @map("kpi_impact") // JSON string
+  approved      Boolean           @default(false)
+  approvedBy    String?           @map("approved_by")
+  approvedAt    DateTime?         @map("approved_at")
+  attachmentUrl String?           @map("attachment_url")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  user     User    @relation(fields: [userId], references: [id])
+  period   Period? @relation(fields: [periodId], references: [id])
+  approver User?   @relation("ApproverInitiatives", fields: [approvedBy], references: [id])
+
+  @@map("initiatives")
+}
+
+model HomeOfficeGrant {
+  id         String      @id @default(cuid())
+  userId     String      @map("user_id")
+  periodId   String?     @map("period_id")
+  days       Int
+  source     GrantSource @default(NORMAL)
+  expiresAt  DateTime?   @map("expires_at")
+  redeemed   Boolean     @default(false)
+  redeemedAt DateTime?   @map("redeemed_at")
+  notes      String?
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  // Relations
+  user   User    @relation(fields: [userId], references: [id])
+  period Period? @relation(fields: [periodId], references: [id])
+
+  @@map("home_office_grants")
+}
+
+model AuditLog {
+  id           String    @id @default(cuid())
+  actorUserId  String?   @map("actor_user_id")
+  action       String
+  entity       String
+  entityId     String    @map("entity_id")
+  oldValues    String?   @map("old_values") // JSON string
+  newValues    String?   @map("new_values") // JSON string
+  meta         String?   // JSON string
+  ipAddress    String?   @map("ip_address")
+  userAgent    String?   @map("user_agent")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  actor User? @relation("ActorAuditLogs", fields: [actorUserId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model Setting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String   // JSON string
+  description String?
+  updatedBy   String?  @map("updated_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+// Enums
+enum UserRole {
+  ADMIN
+  MANAGER
+  LEADER_DEV
+  LEADER_PO
+  LEADER_INFRA
+  MEMBER
+}
+
+enum PeriodStatus {
+  OPEN
+  VOTING
+  CLOSED
+}
+
+enum InitiativeType {
+  DEV
+  PO
+  INFRA
+}
+
+enum InitiativeStatus {
+  DRAFT
+  PLANNED
+  ADOPTED
+  IMPACTFUL
+}
+
+enum GrantSource {
+  NORMAL
+  SPECIAL
+  POINTS
+  BONUS
+}
