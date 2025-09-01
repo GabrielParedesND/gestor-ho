@@ -11,7 +11,7 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 
 // Auth routes
 app.post('/api/auth/signin', async (req, res) => {
@@ -41,6 +41,7 @@ app.post('/api/auth/signin', async (req, res) => {
     
     res.json({ user: { id: user.id, email: user.email }, profile: user });
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
@@ -203,6 +204,99 @@ app.get('/api/periods/:periodId/results', async (req, res) => {
 app.post('/api/periods/:periodId/close', async (req, res) => {
   try {
     const { periodId } = req.params;
+    const { force = false } = req.body; // Parámetro para forzar el cierre
+    
+    console.log(`🔄 Attempting to close period ${periodId}, force: ${force}`);
+    
+    // VALIDACIONES ANTES DEL CIERRE (solo si no es forzado)
+    if (!force) {
+      console.log('📋 Running validations...');
+      // 1. Obtener todos los usuarios que deben votar (MANAGER y LEADER activos)
+      const usersWhoShouldVote = await prisma.user.findMany({
+        where: {
+          role: { in: ['MANAGER', 'LEADER'] },
+          active: true,
+        },
+      });
+
+      // 2. Obtener todos los usuarios que deben nominar (MANAGER y LEADER activos)
+      const usersWhoShouldNominate = await prisma.user.findMany({
+        where: {
+          role: { in: ['MANAGER', 'LEADER'] },
+          active: true,
+        },
+      });
+
+      // 3. Verificar quién ha votado
+      const votersWhoVoted = await prisma.vote.findMany({
+        where: { periodId },
+        select: { voterId: true },
+        distinct: ['voterId'],
+      });
+
+      const voterIds = votersWhoVoted.map(v => v.voterId);
+      const usersWhoDidntVote = usersWhoShouldVote.filter(user => !voterIds.includes(user.id));
+
+      // 4. Verificar quién ha nominado
+      const nominatorsWhoNominated = await prisma.nomination.findMany({
+        where: { periodId },
+        select: { nominatorId: true },
+        distinct: ['nominatorId'],
+      });
+
+      const nominatorIds = nominatorsWhoNominated.map(n => n.nominatorId);
+      const usersWhoDidntNominate = usersWhoShouldNominate.filter(user => !nominatorIds.includes(user.id));
+
+      // 5. Verificar que hay candidatos
+      const candidateCount = await prisma.candidate.count({
+        where: { periodId },
+      });
+
+      // 6. Preparar errores de validación
+      const validationErrors: any[] = [];
+
+      if (usersWhoDidntVote.length > 0) {
+        validationErrors.push({
+          type: 'missing_votes',
+          message: `${usersWhoDidntVote.length} usuario(s) no han votado`,
+          users: usersWhoDidntVote.map(u => ({ id: u.id, name: u.name, role: u.role })),
+        });
+      }
+
+      if (usersWhoDidntNominate.length > 0) {
+        validationErrors.push({
+          type: 'missing_nominations',
+          message: `${usersWhoDidntNominate.length} usuario(s) no han hecho nominaciones`,
+          users: usersWhoDidntNominate.map(u => ({ id: u.id, name: u.name, role: u.role })),
+        });
+      }
+
+      if (candidateCount === 0) {
+        validationErrors.push({
+          type: 'no_candidates',
+          message: 'No hay candidatos en este período',
+          users: [],
+        });
+      }
+
+      // 7. Si hay errores de validación, retornar información para mostrar modal
+      if (validationErrors.length > 0) {
+        console.log('❌ Validation errors found:', validationErrors);
+        console.log('📤 Sending validation response to frontend');
+        
+        const responseData = {
+          error: 'validation_required',
+          validationErrors,
+          summary: `Faltan: ${usersWhoDidntVote.length} votos, ${usersWhoDidntNominate.length} nominaciones`,
+          canForce: true,
+        };
+        
+        console.log('📤 Response data:', responseData);
+        return res.status(400).json(responseData);
+      }
+    }
+
+    // PROCESAMIENTO NORMAL (solo si todas las validaciones pasan)
     
     // Get all votes for this period
     const votes = await prisma.vote.findMany({
@@ -219,27 +313,38 @@ app.post('/api/periods/:periodId/close', async (req, res) => {
       include: { user: true },
     });
 
-    // Seleccionar un voto global al azar de líderes/manager para descartar
-    const leaderManagerVotes = votes.filter(v => 
-      ['MANAGER', 'LEADER_DEV', 'LEADER_PO', 'LEADER_INFRA'].includes(v.voter?.role)
-    );
+    // Seleccionar una entidad (manager o líder) al azar para descartar TODOS sus votos
+    const votersByRole = votes.reduce((acc, vote) => {
+      if (['MANAGER', 'LEADER'].includes(vote.voter?.role)) {
+        if (!acc[vote.voterId]) {
+          acc[vote.voterId] = vote.voter;
+        }
+      }
+      return acc;
+    }, {} as Record<string, any>);
     
-    let globalDiscardedVoterId = null;
-    if (leaderManagerVotes.length > 0) {
-      const randomIndex = Math.floor(Math.random() * leaderManagerVotes.length);
-      globalDiscardedVoterId = leaderManagerVotes[randomIndex].voterId;
+    const eligibleVotersForDiscard = Object.values(votersByRole);
+    let globalDiscardedVoterId: string | null = null;
+    
+    if (eligibleVotersForDiscard.length > 0) {
+      const randomIndex = Math.floor(Math.random() * eligibleVotersForDiscard.length);
+      globalDiscardedVoterId = eligibleVotersForDiscard[randomIndex].id;
     }
 
     // Calculate results for each candidate
-    const tallies = [];
-    const grants = [];
+    const tallies: any[] = [];
+    const grants: any[] = [];
 
     for (const candidate of candidates) {
       const userVotes = votes.filter(v => v.targetUserId === candidate.userId);
       const rawVotes = userVotes.length;
       
-      // Filtrar votos excluyendo el voto globalmente descartado
-      const finalVotes = userVotes.filter(v => v.voterId !== globalDiscardedVoterId);
+      // Filtrar votos excluyendo TODOS los votos de la entidad descartada
+      const finalVotes = userVotes.filter(v => {
+        if (!globalDiscardedVoterId) return true;
+        // Descartar TODOS los votos de la entidad seleccionada
+        return v.voterId !== globalDiscardedVoterId;
+      });
       
       const countedVotes = finalVotes.length;
       const managerVote = finalVotes.find(v => v.voter?.role === 'MANAGER');
@@ -262,7 +367,7 @@ app.post('/api/periods/:periodId/close', async (req, res) => {
         userId: candidate.userId,
         rawVotes,
         countedVotes,
-        discardedVoterId: globalDiscardedVoterId,
+        discardedVoterId: globalDiscardedVoterId || null,
         managerIncluded: !!managerVote,
         resultDays,
         calculationSeed: `${periodId}-${candidate.userId}`,
@@ -318,9 +423,9 @@ app.post('/api/nominations', async (req, res) => {
   try {
     const { periodId, nominatorId, nomineeId, reason, projectId, category, contributionType } = req.body;
     
-    // Verificar que el nominador puede nominar (MANAGER, LEADER, ADMIN)
+    // Verificar que el nominador puede nominar (MANAGER, LEADER)
     const nominator = await prisma.user.findUnique({ where: { id: nominatorId } });
-    if (!nominator || !['MANAGER', 'LEADER_DEV', 'LEADER_PO', 'LEADER_INFRA', 'ADMIN'].includes(nominator.role)) {
+    if (!nominator || !['MANAGER', 'LEADER'].includes(nominator.role)) {
       return res.status(403).json({ error: 'No tienes permisos para nominar' });
     }
     

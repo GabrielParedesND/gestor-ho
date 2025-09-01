@@ -5,6 +5,7 @@ import { Button } from '../ui/Button';
 import { Textarea } from '../ui/Textarea';
 import { Modal } from '../ui/Modal';
 import { Badge } from '../ui/Badge';
+import { getCategoryLabel, getContributionTypeLabel } from '../../lib/constants';
 import type { User } from '@prisma/client';
 
 interface VotingCardProps {
@@ -49,9 +50,8 @@ export function VotingCard({
   };
 
   return (
-    <Card className={`overflow-hidden transition-all duration-200 ${
-      hasVoted ? 'border-green-500 bg-green-50' : 'hover:shadow-md hover:border-gray-300'
-    } md:p-0`}>
+    <Card className={`overflow-hidden transition-all duration-200 ${hasVoted ? 'border-green-500 bg-green-50' : 'hover:shadow-md hover:border-gray-300'
+      } md:p-0`}>
       {/* Layout responsive */}
       <div className="md:flex md:items-center md:justify-between md:p-4">
         {/* Info del usuario */}
@@ -76,7 +76,7 @@ export function VotingCard({
             </div>
           )}
         </div>
-        
+
         {/* Nominaciones */}
         {(user as any).nominations && (user as any).nominations.length > 0 && (
           <div className="mt-2 mb-4 space-y-1 md:flex-1 md:mx-4 md:mt-0 md:mb-0">
@@ -85,22 +85,6 @@ export function VotingCard({
             </p>
             <div className="md:flex md:flex-wrap md:gap-2">
               {(user as any).nominations.map((nomination: any) => {
-                const categories = [
-                  { value: 'TECHNICAL', label: 'Técnico' },
-                  { value: 'LEADERSHIP', label: 'Liderazgo' },
-                  { value: 'COLLABORATION', label: 'Colaboración' },
-                  { value: 'INNOVATION', label: 'Innovación' },
-                  { value: 'MENTORSHIP', label: 'Mentoría' }
-                ];
-                
-                const contributionTypes = [
-                  { value: 'DELIVERY', label: 'Entrega' },
-                  { value: 'QUALITY', label: 'Calidad' },
-                  { value: 'INNOVATION', label: 'Innovación' },
-                  { value: 'SUPPORT', label: 'Apoyo' },
-                  { value: 'PROCESS', label: 'Procesos' }
-                ];
-                
                 return (
                   <div key={nomination.id} className="text-xs text-gray-600 bg-gray-100 rounded px-2 py-1 md:inline-block">
                     <div className="mb-1 md:mb-0">
@@ -113,12 +97,12 @@ export function VotingCard({
                         )}
                         {nomination.category && (
                           <Badge variant="outline" size="sm" className="text-xs bg-blue-50 text-blue-700">
-                            {categories.find(c => c.value === nomination.category)?.label || nomination.category}
+                            {getCategoryLabel(nomination.category)}
                           </Badge>
                         )}
                         {nomination.contributionType && (
                           <Badge variant="outline" size="sm" className="text-xs bg-purple-50 text-purple-700">
-                            {contributionTypes.find(t => t.value === nomination.contributionType)?.label || nomination.contributionType}
+                            {getContributionTypeLabel(nomination.contributionType)}
                           </Badge>
                         )}
                       </div>
@@ -129,13 +113,13 @@ export function VotingCard({
             </div>
           </div>
         )}
-        
 
-        
+
+
         {/* Estado y botones */}
         <div className="md:flex md:items-center md:space-x-4">
 
-          
+
           {/* Estado y botones desktop */}
           <div className="hidden md:block">
             {hasVoted && (
@@ -217,14 +201,14 @@ export function VotingCard({
           <p className="text-gray-600">
             ¿Deseas agregar un comentario opcional a tu voto?
           </p>
-          
+
           <Textarea
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
             placeholder="Comentario opcional (ej: Excelente trabajo en el proyecto X)..."
             rows={3}
           />
-          
+
           <div className="flex justify-end space-x-3">
             <Button
               variant="ghost"

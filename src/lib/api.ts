@@ -15,8 +15,14 @@ class ApiClient {
       const response = await fetch(url, config);
       
       if (!response.ok) {
-        const error = await response.json().catch(() => ({ error: 'Error en la petición' }));
-        throw new Error(error.error || 'Error en la petición');
+        const errorData = await response.json().catch(() => ({ error: 'Error en la petición' }));
+        const error = new Error(errorData.error || 'Error en la petición') as any;
+        // Agregar la estructura de respuesta similar a axios
+        error.response = {
+          status: response.status,
+          data: errorData
+        };
+        throw error;
       }
 
       return response.json();
@@ -83,9 +89,10 @@ class ApiClient {
     });
   }
 
-  async closePeriod(periodId: string) {
+  async closePeriod(periodId: string, force: boolean = false) {
     return this.request(`/periods/${periodId}/close`, {
       method: 'POST',
+      body: JSON.stringify({ force }),
     });
   }
 

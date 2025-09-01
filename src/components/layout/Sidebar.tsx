@@ -29,7 +29,7 @@ const navigation = [
   
   // Beneficios y reconocimientos
   { name: 'Mis Días HO', href: '/grants', icon: Calendar, roles: ['LEADER', 'MEMBER'] },
-  { name: 'Iniciativas', href: '/initiatives', icon: Target, roles: ['LEADER', 'MANAGER'] },
+  { name: 'Iniciativas', href: '/initiatives', icon: Target, roles: ['LEADER', 'MANAGER', 'MEMBER'] },
   { name: 'Leaderboard', href: '/leaderboard', icon: Trophy, roles: ['ALL', 'VIEWER'] },
   
   // Administración

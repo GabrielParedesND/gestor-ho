@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button';
 import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
 import { safeFormat } from '../lib/dateUtils';
+import { getCategoryLabel, getContributionTypeLabel } from '../lib/constants';
 import type { Tally, Period, User } from '@prisma/client';
 
 export function Results() {
@@ -81,25 +82,9 @@ export function Results() {
     Object.values(nominationsByUser).forEach((group: any) => {
       summary.push(`${group.user.name}:`);
       group.nominations.forEach((nomination: any) => {
-        const categories = [
-          { value: 'TECHNICAL', label: 'Técnico' },
-          { value: 'LEADERSHIP', label: 'Liderazgo' },
-          { value: 'COLLABORATION', label: 'Colaboración' },
-          { value: 'INNOVATION', label: 'Innovación' },
-          { value: 'MENTORSHIP', label: 'Mentoría' }
-        ];
-        
-        const contributionTypes = [
-          { value: 'DELIVERY', label: 'Entrega' },
-          { value: 'QUALITY', label: 'Calidad' },
-          { value: 'INNOVATION', label: 'Innovación' },
-          { value: 'SUPPORT', label: 'Apoyo' },
-          { value: 'PROCESS', label: 'Procesos' }
-        ];
-        
         const project = nomination.project ? ` (${nomination.project.name})` : '';
-        const category = nomination.category ? ` [${categories.find(c => c.value === nomination.category)?.label || nomination.category}]` : '';
-        const contributionType = nomination.contributionType ? ` [${contributionTypes.find(t => t.value === nomination.contributionType)?.label || nomination.contributionType}]` : '';
+        const category = nomination.category ? ` [${getCategoryLabel(nomination.category)}]` : '';
+        const contributionType = nomination.contributionType ? ` [${getContributionTypeLabel(nomination.contributionType)}]` : '';
         summary.push(`  • ${nomination.nominator.name}: "${nomination.reason}"${project}${category}${contributionType}`);
       });
       summary.push('');
@@ -169,26 +154,10 @@ export function Results() {
                     <div class="nominee">
                         <h3>👤 ${group.user.name}</h3>
                         ${group.nominations.map((nomination: any) => {
-                          const categories = [
-                            { value: 'TECHNICAL', label: 'Técnico' },
-                            { value: 'LEADERSHIP', label: 'Liderazgo' },
-                            { value: 'COLLABORATION', label: 'Colaboración' },
-                            { value: 'INNOVATION', label: 'Innovación' },
-                            { value: 'MENTORSHIP', label: 'Mentoría' }
-                          ];
-                          
-                          const contributionTypes = [
-                            { value: 'DELIVERY', label: 'Entrega' },
-                            { value: 'QUALITY', label: 'Calidad' },
-                            { value: 'INNOVATION', label: 'Innovación' },
-                            { value: 'SUPPORT', label: 'Apoyo' },
-                            { value: 'PROCESS', label: 'Procesos' }
-                          ];
-                          
-                          const categoryLabel = nomination.category ? categories.find(c => c.value === nomination.category)?.label || nomination.category : '';
-                          const contributionTypeLabel = nomination.contributionType ? contributionTypes.find(t => t.value === nomination.contributionType)?.label || nomination.contributionType : '';
-                          
-                          return `
+      const categoryLabel = nomination.category ? getCategoryLabel(nomination.category) : '';
+      const contributionTypeLabel = nomination.contributionType ? getContributionTypeLabel(nomination.contributionType) : '';
+
+      return `
                             <div class="nomination">
                                 <div class="nominator">💬 ${nomination.nominator.name}:</div>
                                 <div class="reason">"${nomination.reason}"</div>
@@ -199,7 +168,7 @@ export function Results() {
                                 </div>
                             </div>
                           `;
-                        }).join('')}
+    }).join('')}
                     </div>
                 `).join('')}
             </div>
@@ -208,10 +177,10 @@ export function Results() {
                 <h2>🏅 Resultados Finales</h2>
                 <div class="results">
                     ${results.map((result) => {
-                      const daysClass = result.resultDays === 3 ? 'days-3' : result.resultDays === 2 ? 'days-2' : result.resultDays === 1 ? 'days-1' : 'days-0';
-                      const daysText = result.resultDays > 0 ? `${result.resultDays} día${result.resultDays > 1 ? 's' : ''}` : 'Sin días';
-                      const emoji = result.resultDays === 3 ? '🎆' : result.resultDays === 2 ? '🎉' : result.resultDays === 1 ? '🎈' : '🙏';
-                      return `
+      const daysClass = result.resultDays === 3 ? 'days-3' : result.resultDays === 2 ? 'days-2' : result.resultDays === 1 ? 'days-1' : 'days-0';
+      const daysText = result.resultDays > 0 ? `${result.resultDays} día${result.resultDays > 1 ? 's' : ''}` : 'Sin días';
+      const emoji = result.resultDays === 3 ? '🎆' : result.resultDays === 2 ? '🎉' : result.resultDays === 1 ? '🎈' : '🙏';
+      return `
                         <div class="result-item">
                             <div>
                                 <div class="result-name">${emoji} ${result.user?.name}</div>
@@ -220,7 +189,7 @@ export function Results() {
                             <div class="result-days ${daysClass}">${daysText}</div>
                         </div>
                       `;
-                    }).join('')}
+    }).join('')}
                     ${results.length > 0 && results[0].discardedVoter ? `
                         <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; color: #856404;">
                             ℹ️ Voto descartado aleatoriamente: ${results[0].discardedVoter.name}
@@ -323,7 +292,7 @@ export function Results() {
               <div>
                 <p className="text-sm text-gray-600">Fechas</p>
                 <p className="text-sm">
-                  {safeFormat(selectedPeriodData.startDate)} - 
+                  {safeFormat(selectedPeriodData.startDate)} -
                   {safeFormat(selectedPeriodData.endDate)}
                 </p>
               </div>
@@ -358,7 +327,7 @@ export function Results() {
                   acc[userId].nominations.push(nomination);
                   return acc;
                 }, {});
-                
+
                 return Object.values(nominationsByUser).map((group: any) => (
                   <div key={group.user.id} className="p-4 bg-gray-50 rounded-lg">
                     <div className="flex items-center space-x-3 mb-3">
@@ -373,48 +342,30 @@ export function Results() {
                       </div>
                     </div>
                     <div className="space-y-2 ml-11">
-                      {group.nominations.map((nomination: any) => {
-                        const categories = [
-                          { value: 'TECHNICAL', label: 'Técnico' },
-                          { value: 'LEADERSHIP', label: 'Liderazgo' },
-                          { value: 'COLLABORATION', label: 'Colaboración' },
-                          { value: 'INNOVATION', label: 'Innovación' },
-                          { value: 'MENTORSHIP', label: 'Mentoría' }
-                        ];
-                        
-                        const contributionTypes = [
-                          { value: 'DELIVERY', label: 'Entrega' },
-                          { value: 'QUALITY', label: 'Calidad' },
-                          { value: 'INNOVATION', label: 'Innovación' },
-                          { value: 'SUPPORT', label: 'Apoyo' },
-                          { value: 'PROCESS', label: 'Procesos' }
-                        ];
-                        
-                        return (
-                          <div key={nomination.id} className="text-sm text-gray-700 bg-white rounded px-3 py-2">
-                            <div className="mb-2">
-                              <span className="font-medium">{nomination.nominator.name}:</span> "{nomination.reason}"
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                              {nomination.project && (
-                                <Badge variant="outline" size="sm">
-                                  {nomination.project.name}
-                                </Badge>
-                              )}
-                              {nomination.category && (
-                                <Badge variant="outline" size="sm" className="bg-blue-50 text-blue-700">
-                                  {categories.find(c => c.value === nomination.category)?.label || nomination.category}
-                                </Badge>
-                              )}
-                              {nomination.contributionType && (
-                                <Badge variant="outline" size="sm" className="bg-purple-50 text-purple-700">
-                                  {contributionTypes.find(t => t.value === nomination.contributionType)?.label || nomination.contributionType}
-                                </Badge>
-                              )}
-                            </div>
+                      {group.nominations.map((nomination: any) => (
+                        <div key={nomination.id} className="text-sm text-gray-700 bg-white rounded px-3 py-2">
+                          <div className="mb-2">
+                            <span className="font-medium">{nomination.nominator.name}:</span> "{nomination.reason}"
                           </div>
-                        );
-                      })}
+                          <div className="flex flex-wrap gap-2">
+                            {nomination.project && (
+                              <Badge variant="outline" size="sm">
+                                {nomination.project.name}
+                              </Badge>
+                            )}
+                            {nomination.category && (
+                              <Badge variant="outline" size="sm" className="bg-blue-50 text-blue-700">
+                                {getCategoryLabel(nomination.category)}
+                              </Badge>
+                            )}
+                            {nomination.contributionType && (
+                              <Badge variant="outline" size="sm" className="bg-purple-50 text-purple-700">
+                                {getContributionTypeLabel(nomination.contributionType)}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ));
@@ -444,7 +395,7 @@ export function Results() {
                       <p className="text-sm text-gray-600">{result.user?.role}</p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-6">
                     <div className="text-center">
                       <p className="text-sm text-gray-600">Votos Brutos</p>

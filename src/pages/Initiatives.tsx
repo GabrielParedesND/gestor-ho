@@ -12,8 +12,19 @@ import { safeFormat } from '../lib/dateUtils';
 import toast from 'react-hot-toast';
 import type { Initiative } from '@prisma/client';
 
+const getInitiativeTypeLabel = (type: string) => {
+  const labels = {
+    'PROCESS': 'Proceso',
+    'INNOVATION': 'Innovación', 
+    'EFFICIENCY': 'Eficiencia',
+    'QUALITY': 'Calidad',
+    'CULTURE': 'Cultura'
+  };
+  return labels[type as keyof typeof labels] || type;
+};
+
 export function Initiatives() {
-  const { user, isLeader, isManagerOrAdmin } = useAuth();
+  const { user, isManager } = useAuth();
   const [initiatives, setInitiatives] = useState<Initiative[]>([]);
   const [allInitiatives, setAllInitiatives] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -26,20 +37,21 @@ export function Initiatives() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    type: 'DEV' as 'DEV' | 'PO' | 'INFRA',
+    type: 'PROCESS' as 'PROCESS' | 'INNOVATION' | 'EFFICIENCY' | 'QUALITY' | 'CULTURE',
   });
 
   useEffect(() => {
-    if (isLeader) {
-      loadInitiatives();
-    }
-    if (isManagerOrAdmin) {
-      loadAllInitiatives();
-    }
     if (user) {
+      // Todos los usuarios pueden ver sus propias iniciativas
+      loadInitiatives();
       loadUserPoints();
+      
+      // Solo los managers pueden ver todas las iniciativas
+      if (isManager) {
+        loadAllInitiatives();
+      }
     }
-  }, [user, isManagerOrAdmin, isLeader]);
+  }, [user, isManager]);
 
   const loadInitiatives = async () => {
     if (!user) return;
@@ -159,7 +171,7 @@ export function Initiatives() {
 
       setInitiatives([newInitiative, ...initiatives]);
       setShowModal(false);
-      setFormData({ title: '', description: '', type: 'DEV' });
+      setFormData({ title: '', description: '', type: 'PROCESS' });
       toast.success('Iniciativa creada correctamente');
     } catch (error) {
       console.error('Error creating initiative:', error);
@@ -189,13 +201,14 @@ export function Initiatives() {
     }
   };
 
-  if (!isLeader && !isManagerOrAdmin) {
+  // Verificar que el usuario esté autenticado
+  if (!user) {
     return (
       <div className="text-center py-12">
         <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
         <h2 className="text-xl font-semibold text-gray-900">Acceso Restringido</h2>
         <p className="text-gray-600 mt-2">
-          Solo los líderes y managers pueden gestionar iniciativas.
+          Debes iniciar sesión para gestionar iniciativas.
         </p>
       </div>
     );
@@ -206,30 +219,28 @@ export function Initiatives() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {isManagerOrAdmin ? 'Gestionar Iniciativas' : 'Mis Iniciativas'}
+            {isManager ? 'Gestionar Iniciativas' : 'Mis Iniciativas'}
           </h1>
           <p className="text-gray-600">
-            {isManagerOrAdmin ? 'Aprueba y gestiona iniciativas del equipo' : 'Gestiona tus propuestas de mejora e innovación'}
+            {isManager ? 'Aprueba y gestiona iniciativas del equipo' : 'Gestiona tus propuestas de mejora e innovación'}
           </p>
         </div>
         <div className="flex items-center space-x-3">
-          {isLeader && userPoints >= pointsNeeded && (
-            <Button variant="success" onClick={() => setShowRedeemModal(true)}>
+          {userPoints >= pointsNeeded && (
+            <Button onClick={() => setShowRedeemModal(true)}>
               <Award className="h-4 w-4 mr-2" />
               Canjear Puntos ({userPoints})
             </Button>
           )}
-          {isLeader && (
-            <Button onClick={() => setShowModal(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Nueva Iniciativa
-            </Button>
-          )}
+          <Button onClick={() => setShowModal(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva Iniciativa
+          </Button>
         </div>
       </div>
 
-      {/* Panel de Aprobación para Managers/Admins */}
-      {isManagerOrAdmin && (
+      {/* Panel de Aprobación solo para Managers */}
+      {isManager && (
         <Card>
           <CardHeader>
             <CardTitle>Iniciativas Pendientes de Aprobación</CardTitle>
@@ -242,7 +253,7 @@ export function Initiatives() {
                     <h4 className="font-medium">{initiative.title}</h4>
                     <p className="text-sm text-gray-600 mt-1">{initiative.description}</p>
                     <div className="flex items-center space-x-2 mt-2">
-                      <Badge variant="outline">{initiative.type}</Badge>
+                      <Badge variant="outline">{getInitiativeTypeLabel(initiative.type)}</Badge>
                       <span className="text-sm text-gray-500">Por: {initiative.user.name}</span>
                     </div>
                   </div>
@@ -266,10 +277,9 @@ export function Initiatives() {
         </Card>
       )}
 
-      {/* Mis Iniciativas (solo para líderes) */}
-      {isLeader && (
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Mis Iniciativas</h2>
+      {/* Mis Iniciativas - Todos los usuarios */}
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Mis Iniciativas</h2>
           <div className="grid gap-6">
             {initiatives.length > 0 ? (
               initiatives.map((initiative) => (
@@ -285,7 +295,7 @@ export function Initiatives() {
                           <span>{initiative.status}</span>
                         </div>
                       </Badge>
-                      <Badge variant="outline">{initiative.type}</Badge>
+                      <Badge variant="outline">{getInitiativeTypeLabel(initiative.type)}</Badge>
                       <span className="text-sm text-gray-500">
                         {safeFormat(initiative.createdAt || initiative.created_at)}
                       </span>
@@ -305,7 +315,7 @@ export function Initiatives() {
                           Iniciativa Aprobada
                         </span>
                       </div>
-                      {isManagerOrAdmin && initiative.status !== 'IMPACTFUL' && (
+                      {isManager && initiative.status !== 'IMPACTFUL' && (
                         <div className="flex space-x-2">
                           {initiative.status === 'PLANNED' && (
                             <Button size="sm" variant="ghost" onClick={() => handleStatusChange(initiative.id, 'ADOPTED')}>
@@ -367,10 +377,9 @@ export function Initiatives() {
         )}
           </div>
         </div>
-      )}
 
-      {/* Todas las Iniciativas (solo para managers/admins que no son líderes) */}
-      {isManagerOrAdmin && !isLeader && (
+      {/* Todas las Iniciativas - Solo para managers */}
+      {isManager && (
         <div>
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Todas las Iniciativas</h2>
           <div className="grid gap-6">
@@ -387,7 +396,7 @@ export function Initiatives() {
                             <span>{initiative.status}</span>
                           </div>
                         </Badge>
-                        <Badge variant="outline">{initiative.type}</Badge>
+                        <Badge variant="outline">{getInitiativeTypeLabel(initiative.type)}</Badge>
                         <span className="text-sm text-gray-500">
                           Por: {initiative.user.name} - {safeFormat(initiative.createdAt || initiative.created_at)}
                         </span>
@@ -479,9 +488,11 @@ export function Initiatives() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             >
-              <option value="DEV">Desarrollo</option>
-              <option value="PO">Product Owner</option>
-              <option value="INFRA">Infraestructura</option>
+              <option value="PROCESS">Proceso</option>
+              <option value="INNOVATION">Innovación</option>
+              <option value="EFFICIENCY">Eficiencia</option>
+              <option value="QUALITY">Calidad</option>
+              <option value="CULTURE">Cultura</option>
             </select>
           </div>
 

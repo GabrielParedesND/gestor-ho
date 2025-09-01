@@ -9,10 +9,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiClient } from '../lib/api';
 import { periodService } from '../services/periodService';
 import { safeFormat } from '../lib/dateUtils';
+import { CATEGORIES, CONTRIBUTION_TYPES, getCategoryLabel, getContributionTypeLabel } from '../lib/constants';
 import toast from 'react-hot-toast';
 
 export function Nominations() {
-  const { user, canVote } = useAuth();
+  const { user, canNominate } = useAuth();
   const [loading, setLoading] = useState(true);
   const [currentPeriod, setCurrentPeriod] = useState(null);
   const [nominations, setNominations] = useState([]);
@@ -25,22 +26,6 @@ export function Nominations() {
   const [category, setCategory] = useState('');
   const [contributionType, setContributionType] = useState('');
   const [submitting, setSubmitting] = useState(false);
-
-  const categories = [
-    { value: 'TECHNICAL', label: 'Técnico' },
-    { value: 'LEADERSHIP', label: 'Liderazgo' },
-    { value: 'COLLABORATION', label: 'Colaboración' },
-    { value: 'INNOVATION', label: 'Innovación' },
-    { value: 'MENTORSHIP', label: 'Mentoría' }
-  ];
-
-  const contributionTypes = [
-    { value: 'DELIVERY', label: 'Entrega' },
-    { value: 'QUALITY', label: 'Calidad' },
-    { value: 'INNOVATION', label: 'Innovación' },
-    { value: 'SUPPORT', label: 'Apoyo' },
-    { value: 'PROCESS', label: 'Procesos' }
-  ];
 
   useEffect(() => {
     loadData();
@@ -122,14 +107,14 @@ export function Nominations() {
     const nominatedIds = nominations
       .filter((n: any) => n.nominator.id === user?.id)
       .map((n: any) => n.nominee.id);
-    
+
     return members.filter(member => !nominatedIds.includes(member.id));
   };
 
   const getNominationsByMember = () => {
     // Filtrar solo las nominaciones del usuario actual
     const myNominations = nominations.filter((n: any) => n.nominator.id === user?.id);
-    
+
     const grouped = myNominations.reduce((acc: any, nomination: any) => {
       const memberId = nomination.nominee.id;
       if (!acc[memberId]) {
@@ -145,7 +130,7 @@ export function Nominations() {
     return Object.values(grouped);
   };
 
-  if (!canVote) {
+  if (!canNominate) {
     return (
       <div className="text-center py-12">
         <UserPlus className="h-12 w-12 text-gray-400 mx-auto mb-4" />
@@ -241,12 +226,12 @@ export function Nominations() {
                           )}
                           {nomination.category && (
                             <Badge variant="outline" size="sm" className="bg-blue-50 text-blue-700">
-                              {categories.find(c => c.value === nomination.category)?.label || nomination.category}
+                              {getCategoryLabel(nomination.category)}
                             </Badge>
                           )}
                           {nomination.contributionType && (
                             <Badge variant="outline" size="sm" className="bg-purple-50 text-purple-700">
-                              {contributionTypes.find(t => t.value === nomination.contributionType)?.label || nomination.contributionType}
+                              {getContributionTypeLabel(nomination.contributionType)}
                             </Badge>
                           )}
                         </div>
@@ -342,7 +327,7 @@ export function Nominations() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Selecciona una categoría...</option>
-              {categories.map(cat => (
+              {CATEGORIES.map(cat => (
                 <option key={cat.value} value={cat.value}>
                   {cat.label}
                 </option>
@@ -360,7 +345,7 @@ export function Nominations() {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Selecciona un tipo...</option>
-              {contributionTypes.map(type => (
+              {CONTRIBUTION_TYPES.map(type => (
                 <option key={type.value} value={type.value}>
                   {type.label}
                 </option>

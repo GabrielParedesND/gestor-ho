@@ -16,6 +16,12 @@ export function Periods() {
   const [periods, setPeriods] = useState<Period[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [validationModal, setValidationModal] = useState({
+    show: false,
+    periodId: '',
+    validationErrors: [],
+    summary: ''
+  });
   const [formData, setFormData] = useState({
     weekLabel: '',
     startDate: '',
@@ -58,16 +64,49 @@ export function Periods() {
     }
   };
 
-  const handleClosePeriod = async (periodId: string) => {
-    if (confirm('¿Estás seguro de que quieres cerrar este período?')) {
-      try {
-        await apiClient.closePeriod(periodId);
-        await loadPeriods(); // Reload periods to get updated data
-        toast.success('Período cerrado correctamente');
-      } catch (error) {
-        console.error('Error closing period:', error);
+  const handleClosePeriod = async (periodId: string, force: boolean = false) => {
+    try {
+      await apiClient.closePeriod(periodId, force);
+      await loadPeriods(); // Reload periods to get updated data
+      toast.success('Período cerrado correctamente');
+      
+      // Cerrar modal si estaba abierto
+      setValidationModal({
+        show: false,
+        periodId: '',
+        validationErrors: [],
+        summary: ''
+      });
+    } catch (error: any) {
+      console.error('Error closing period:', error);
+      console.error('Error response:', error.response);
+      console.error('Error response data:', error.response?.data);
+      console.error('Error response status:', error.response?.status);
+      
+      // Manejar errores de validación específicos
+      if (error.response?.status === 400 && error.response?.data?.error === 'validation_required') {
+        const validationData = error.response.data;
+        
+        console.log('Showing validation modal with data:', validationData);
+        
+        // Mostrar modal de validación
+        setValidationModal({
+          show: true,
+          periodId,
+          validationErrors: validationData.validationErrors,
+          summary: validationData.summary
+        });
+        
+        console.log('Validation modal state updated');
+      } else {
         toast.error('Error al cerrar el período');
       }
+    }
+  };
+
+  const handleForceClose = () => {
+    if (confirm('¿Estás seguro de que quieres cerrar el período sin que todos hayan completado las acciones?')) {
+      handleClosePeriod(validationModal.periodId, true);
     }
   };
 
@@ -109,6 +148,8 @@ export function Periods() {
       </div>
     );
   }
+
+  console.log('Validation modal state:', validationModal);
 
   return (
     <div className="space-y-6">
@@ -266,6 +307,68 @@ export function Periods() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Modal de Validación de Cierre */}
+      <Modal 
+        isOpen={validationModal.show} 
+        onClose={() => setValidationModal({ show: false, periodId: '', validationErrors: [], summary: '' })}
+        title="Validaciones de Cierre de Período"
+      >
+        <div className="space-y-4">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <h4 className="font-medium text-yellow-800 mb-2">⚠️ Acciones Pendientes</h4>
+            <p className="text-yellow-700 mb-4">{validationModal.summary}</p>
+            
+            <div className="space-y-3">
+              {validationModal.validationErrors.map((validation: any, index: number) => (
+                <div key={index} className="bg-white rounded border border-yellow-200 p-3">
+                  <h5 className="font-medium text-gray-900 mb-2">{validation.message}</h5>
+                  <div className="space-y-1">
+                    {validation.users.map((user: any) => (
+                      <div key={user.id} className="flex items-center justify-between text-sm">
+                        <span className="text-gray-700">• {user.name}</span>
+                        <Badge variant="outline">{user.role}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 className="font-medium text-blue-800 mb-2">¿Qué deseas hacer?</h4>
+            <p className="text-blue-700 text-sm">
+              Puedes esperar a que todos completen sus acciones o forzar el cierre del período.
+              Si fuerzas el cierre, se procesarán solo los votos y nominaciones existentes.
+            </p>
+          </div>
+
+          <div className="flex justify-end space-x-3">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setValidationModal({ show: false, periodId: '', validationErrors: [], summary: '' })}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setValidationModal({ show: false, periodId: '', validationErrors: [], summary: '' })}
+            >
+              Esperar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleForceClose}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              Forzar Cierre
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

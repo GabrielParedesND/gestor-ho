@@ -4,7 +4,7 @@ Un sistema completo de votaciones semanales para otorgar días de Home Office, c
 
 ## 🚀 Características
 
-- **Autenticación**: Sistema de login con diferentes roles (Admin, Manager, Líderes, Miembros)
+- **Autenticación**: Sistema de login con diferentes roles (Admin, Manager, Líderes, Miembros, Visualizadores)
 - **Votaciones**: Sistema de votación semanal para otorgar días de Home Office
 - **Dashboard**: Panel principal con estadísticas y resumen personalizado
 - **Gestión de Usuarios**: CRUD completo de usuarios (solo admins)
@@ -75,9 +75,11 @@ El sistema viene con usuarios predefinidos:
 |-------|------------|-----|
 | admin@example.com | Admin123! | Administrador |
 | manager@example.com | Manager123! | Manager |
-| dev@example.com | Dev123! | Líder Dev |
+| dev@example.com | Dev123! | Líder Desarrollo |
 | po@example.com | Po123! | Líder PO |
+| ops@example.com | Ops123! | Líder Operaciones |
 | member@example.com | Member123! | Miembro |
+| viewer@example.com | Viewer123! | Visualizador |
 
 ## 🔧 Scripts Disponibles
 
@@ -121,16 +123,21 @@ project-2/
 - Acceso a auditoría
 - Dashboard personalizado
 
-### Líderes (Dev/PO/Infra)
+### Líderes (Desarrollo/PO/Operaciones)
 - Participación en votaciones
 - Creación de iniciativas
 - Dashboard personalizado
 - Visualización de leaderboard
+- Gestión de sus grants
 
 ### Miembros
 - Visualización de dashboard
 - Gestión de sus grants
 - Visualización de leaderboard
+
+### Visualizadores
+- Solo acceso al leaderboard
+- Rol de solo lectura para consultas
 
 ## 🔄 Flujo de Votación
 

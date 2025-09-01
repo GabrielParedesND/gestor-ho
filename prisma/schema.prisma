@@ -279,9 +279,11 @@ enum PeriodStatus {
 }
 
 enum InitiativeType {
-  DEV
-  PO
-  INFRA
+  PROCESS
+  INNOVATION
+  EFFICIENCY
+  QUALITY
+  CULTURE
 }
 
 enum InitiativeStatus {
@@ -310,13 +312,14 @@ enum ContributionCategory {
   LEADERSHIP
   COLLABORATION
   INNOVATION
-  MENTORSHIP
+  IMPACT
 }
 
 enum ContributionType {
   DELIVERY
   QUALITY
-  INNOVATION
+  IMPROVEMENT
   SUPPORT
-  PROCESS
+  EFFICIENCY
+  INITIATIVE
 }

@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card'
 import { Badge } from '../components/ui/Badge';
 import { apiClient } from '../lib/api';
 import { safeFormat } from '../lib/dateUtils';
+import { getCategoryLabel, getContributionTypeLabel } from '../lib/constants';
 import type { InnovationPoint, HomeOfficeGrant, User } from '@prisma/client';
 
 // Componentes modulares del leaderboard
@@ -236,7 +237,7 @@ function StatisticsSection({ grantsLeaderboard, pointsLeaderboard }: any) {
                 {pointsLeaderboard.reduce((sum: number, entry: any) => sum + entry.totalPoints, 0)}
               </span>
             </div>
-            
+
             <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
               <div className="flex items-center space-x-3">
                 <div className="bg-green-500 rounded-full p-2">
@@ -248,7 +249,7 @@ function StatisticsSection({ grantsLeaderboard, pointsLeaderboard }: any) {
                 {grantsLeaderboard.reduce((sum: number, entry: any) => sum + entry.totalDays, 0)}
               </span>
             </div>
-            
+
             <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
               <div className="flex items-center space-x-3">
                 <div className="bg-blue-500 rounded-full p-2">
@@ -260,7 +261,7 @@ function StatisticsSection({ grantsLeaderboard, pointsLeaderboard }: any) {
                 {grantsLeaderboard.filter((entry: any) => entry.user.role === 'MEMBER' && entry.totalDays > 0).length}
               </span>
             </div>
-            
+
             <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
               <div className="flex items-center space-x-3">
                 <div className="bg-indigo-500 rounded-full p-2">
@@ -293,57 +294,52 @@ function RecentAchievementsSection({ recentAchievements, safeFormat }: any) {
         {recentAchievements.length > 0 ? (
           <div className="space-y-3">
             {recentAchievements.map((achievement: any) => (
-              <div key={achievement.id} className={`flex items-center space-x-4 p-3 border rounded-lg ${
-                achievement.type === 'innovation' ? 'border-purple-200 bg-purple-50' :
+              <div key={achievement.id} className={`flex items-center space-x-4 p-3 border rounded-lg ${achievement.type === 'innovation' ? 'border-purple-200 bg-purple-50' :
                 achievement.type === 'recognition' ? 'border-green-200 bg-green-50' :
-                achievement.type === 'nominations' ? 'border-blue-200 bg-blue-50' :
-                'border-orange-200 bg-orange-50'
-              }`}>
-                <div className={`rounded-full p-2 ${
-                  achievement.type === 'innovation' ? 'bg-purple-500' :
-                  achievement.type === 'recognition' ? 'bg-green-500' :
-                  achievement.type === 'nominations' ? 'bg-blue-500' :
-                  'bg-orange-500'
+                  achievement.type === 'nominations' ? 'border-blue-200 bg-blue-50' :
+                    'border-orange-200 bg-orange-50'
                 }`}>
-                  {achievement.type === 'innovation' ? <Award className="h-4 w-4 text-white" /> :
-                   achievement.type === 'recognition' ? <Trophy className="h-4 w-4 text-white" /> :
-                   achievement.type === 'nominations' ? <Users className="h-4 w-4 text-white" /> :
-                   <Medal className="h-4 w-4 text-white" />}
-                </div>
-                
-                <div className="flex-1">
-                  <p className={`font-medium ${
-                    achievement.type === 'innovation' ? 'text-purple-900' :
-                    achievement.type === 'recognition' ? 'text-green-900' :
-                    achievement.type === 'nominations' ? 'text-blue-900' :
-                    'text-orange-900'
+                <div className={`rounded-full p-2 ${achievement.type === 'innovation' ? 'bg-purple-500' :
+                  achievement.type === 'recognition' ? 'bg-green-500' :
+                    achievement.type === 'nominations' ? 'bg-blue-500' :
+                      'bg-orange-500'
                   }`}>
+                  {achievement.type === 'innovation' ? <Award className="h-4 w-4 text-white" /> :
+                    achievement.type === 'recognition' ? <Trophy className="h-4 w-4 text-white" /> :
+                      achievement.type === 'nominations' ? <Users className="h-4 w-4 text-white" /> :
+                        <Medal className="h-4 w-4 text-white" />}
+                </div>
+
+                <div className="flex-1">
+                  <p className={`font-medium ${achievement.type === 'innovation' ? 'text-purple-900' :
+                    achievement.type === 'recognition' ? 'text-green-900' :
+                      achievement.type === 'nominations' ? 'text-blue-900' :
+                        'text-orange-900'
+                    }`}>
                     {achievement.type === 'innovation' ? '💡' :
-                     achievement.type === 'recognition' ? '🎆' :
-                     achievement.type === 'nominations' ? '🌟' :
-                     '🎉'} {achievement.user?.name || 'Usuario desconocido'} {achievement.reason}!
+                      achievement.type === 'recognition' ? '🎆' :
+                        achievement.type === 'nominations' ? '🌟' :
+                          '🎉'} {achievement.user?.name || 'Usuario desconocido'} {achievement.reason}!
                   </p>
                 </div>
-                
+
                 <div className="text-right">
-                  <p className={`text-sm ${
-                    achievement.type === 'innovation' ? 'text-purple-600' :
+                  <p className={`text-sm ${achievement.type === 'innovation' ? 'text-purple-600' :
                     achievement.type === 'recognition' ? 'text-green-600' :
-                    achievement.type === 'nominations' ? 'text-blue-600' :
-                    'text-orange-600'
-                  }`}>
+                      achievement.type === 'nominations' ? 'text-blue-600' :
+                        'text-orange-600'
+                    }`}>
                     {safeFormat(achievement.createdAt || achievement.created_at)}
                   </p>
-                  <p className={`text-xs ${
-                    achievement.type === 'innovation' ? 'text-purple-500' :
+                  <p className={`text-xs ${achievement.type === 'innovation' ? 'text-purple-500' :
                     achievement.type === 'recognition' ? 'text-green-500' :
-                    achievement.type === 'nominations' ? 'text-blue-500' :
-                    'text-orange-500'
-                  }`}>
+                      achievement.type === 'nominations' ? 'text-blue-500' :
+                        'text-orange-500'
+                    }`}>
                     {achievement.type === 'innovation' ? '¡Innovador!' :
-                     achievement.type === 'recognition' ? '¡Reconocido!' :
-                     achievement.type === 'nominations' ? '¡Popular!' :
-                     '¡Destacado!'}
+                      achievement.type === 'recognition' ? '¡Reconocido!' :
+                        achievement.type === 'nominations' ? '¡Popular!' :
+                          '¡Destacado!'}
                   </p>
                 </div>
               </div>
@@ -375,24 +371,24 @@ function SpecialRecognitionsSlide() {
     try {
       const periods = await apiClient.getPeriods();
       const recentPeriods = periods.slice(0, 3);
-      
+
       let allNominations = [];
       let allResults = [];
-      
+
       for (const period of recentPeriods) {
         try {
           const [periodNominations, periodResults] = await Promise.all([
             apiClient.getNominations(period.id),
             apiClient.getPeriodResults(period.id)
           ]);
-          
+
           allNominations = [...allNominations, ...periodNominations.map(n => ({ ...n, period }))];
           allResults = [...allResults, ...periodResults];
         } catch (error) {
           console.warn(`Error loading period ${period.id}`);
         }
       }
-      
+
       setNominations(allNominations);
       setResults(allResults);
     } catch (error) {
@@ -401,22 +397,6 @@ function SpecialRecognitionsSlide() {
       setLoading(false);
     }
   };
-
-  const categories = [
-    { value: 'TECHNICAL', label: 'Técnico' },
-    { value: 'LEADERSHIP', label: 'Liderazgo' },
-    { value: 'COLLABORATION', label: 'Colaboración' },
-    { value: 'INNOVATION', label: 'Innovación' },
-    { value: 'MENTORSHIP', label: 'Mentoría' }
-  ];
-  
-  const contributionTypes = [
-    { value: 'DELIVERY', label: 'Entrega' },
-    { value: 'QUALITY', label: 'Calidad' },
-    { value: 'INNOVATION', label: 'Innovación' },
-    { value: 'SUPPORT', label: 'Apoyo' },
-    { value: 'PROCESS', label: 'Procesos' }
-  ];
 
   const winnersIds = results.filter(r => r.resultDays > 0).map(r => r.user?.id);
   const nominationsByUser = nominations.reduce((acc: any, nomination: any) => {
@@ -469,12 +449,12 @@ function SpecialRecognitionsSlide() {
                     <div className="flex flex-wrap gap-2">
                       {nomination.category && (
                         <span className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs">
-                          {categories.find(c => c.value === nomination.category)?.label || nomination.category}
+                          {getCategoryLabel(nomination.category)}
                         </span>
                       )}
                       {nomination.contributionType && (
                         <span className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-xs">
-                          {contributionTypes.find(t => t.value === nomination.contributionType)?.label || nomination.contributionType}
+                          {getContributionTypeLabel(nomination.contributionType)}
                         </span>
                       )}
                     </div>
@@ -509,24 +489,24 @@ function RecongnitionsSection() {
     try {
       const periods = await apiClient.getPeriods();
       const recentPeriods = periods.slice(0, 3);
-      
+
       let allNominations = [];
       let allResults = [];
-      
+
       for (const period of recentPeriods) {
         try {
           const [periodNominations, periodResults] = await Promise.all([
             apiClient.getNominations(period.id),
             apiClient.getPeriodResults(period.id)
           ]);
-          
+
           allNominations = [...allNominations, ...periodNominations.map(n => ({ ...n, period }))];
           allResults = [...allResults, ...periodResults];
         } catch (error) {
           console.warn(`Error loading period ${period.id}`);
         }
       }
-      
+
       setNominations(allNominations);
       setResults(allResults);
     } catch (error) {
@@ -535,22 +515,6 @@ function RecongnitionsSection() {
       setLoading(false);
     }
   };
-
-  const categories = [
-    { value: 'TECHNICAL', label: 'Técnico' },
-    { value: 'LEADERSHIP', label: 'Liderazgo' },
-    { value: 'COLLABORATION', label: 'Colaboración' },
-    { value: 'INNOVATION', label: 'Innovación' },
-    { value: 'MENTORSHIP', label: 'Mentoría' }
-  ];
-  
-  const contributionTypes = [
-    { value: 'DELIVERY', label: 'Entrega' },
-    { value: 'QUALITY', label: 'Calidad' },
-    { value: 'INNOVATION', label: 'Innovación' },
-    { value: 'SUPPORT', label: 'Apoyo' },
-    { value: 'PROCESS', label: 'Procesos' }
-  ];
 
   // Obtener nominados que no ganaron días pero sí fueron nominados
   const winnersIds = results.filter(r => r.resultDays > 0).map(r => r.user?.id);
@@ -622,12 +586,12 @@ function RecongnitionsSection() {
                           )}
                           {nomination.category && (
                             <Badge variant="outline" size="sm" className="bg-blue-50 text-blue-700 text-xs">
-                              {categories.find(c => c.value === nomination.category)?.label || nomination.category}
+                              {getCategoryLabel(nomination.category)}
                             </Badge>
                           )}
                           {nomination.contributionType && (
                             <Badge variant="outline" size="sm" className="bg-purple-50 text-purple-700 text-xs">
-                              {contributionTypes.find(t => t.value === nomination.contributionType)?.label || nomination.contributionType}
+                              {getContributionTypeLabel(nomination.contributionType)}
                             </Badge>
                           )}
                           {nomination.period && (
@@ -664,7 +628,7 @@ function RecongnitionsSection() {
             </div>
           </div>
         )}
-        
+
         <div className="mt-6 p-4 bg-gradient-to-r from-yellow-100 to-orange-100 rounded-lg text-center">
           <p className="text-yellow-800 font-medium">
             🎆 ¡Cada contribución cuenta y es valorada por el equipo!
@@ -716,11 +680,11 @@ export function Leaderboard() {
       // Recent achievements - basado en últimos resultados reales
       try {
         const allAchievements = [];
-        
+
         // Obtener períodos recientes para logros reales
         const periods = await apiClient.getPeriods();
         const recentPeriods = periods.slice(0, 3); // Últimos 3 períodos
-        
+
         // Paralelizar llamadas API para mejor rendimiento
         const periodPromises = recentPeriods.map(async (period) => {
           try {
@@ -734,13 +698,13 @@ export function Leaderboard() {
             return null;
           }
         });
-        
+
         const periodData = await Promise.all(periodPromises);
-        
+
         for (const data of periodData) {
           if (!data) continue;
           const { period, periodResults, periodNominations } = data;
-            
+
           // Logros por resultados de votación
           for (const result of periodResults) {
             if (result.resultDays >= 3) {
@@ -763,14 +727,14 @@ export function Leaderboard() {
               });
             }
           }
-          
+
           // Logros por nominaciones múltiples
           const nominationsByUser = periodNominations.reduce((acc: any, nom: any) => {
             if (!acc[nom.nominee.id]) acc[nom.nominee.id] = { user: nom.nominee, count: 0 };
             acc[nom.nominee.id].count++;
             return acc;
           }, {});
-          
+
           Object.values(nominationsByUser).forEach((entry: any) => {
             if (entry.count >= 2) {
               allAchievements.push({
@@ -784,7 +748,7 @@ export function Leaderboard() {
             }
           });
         }
-        
+
         // Logros de innovación recientes (solo si hay puntos recientes)
         const pointsData = await apiClient.getPointsLeaderboard();
         for (const userEntry of pointsData) {
@@ -799,11 +763,11 @@ export function Leaderboard() {
             });
           }
         }
-        
+
         // Ordenar por fecha y tomar los más recientes
         allAchievements.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
         setRecentAchievements(allAchievements.slice(0, 6));
-        
+
       } catch (error) {
         console.warn('Error loading recent achievements');
         setRecentAchievements([]);
@@ -1011,16 +975,15 @@ export function Leaderboard() {
                   {recentAchievements.slice(0, 6).map((achievement) => (
                     <div key={achievement.id} className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 shadow-lg">
                       <div className="text-center mb-4">
-                        <div className={`rounded-full p-4 mx-auto mb-3 w-16 h-16 flex items-center justify-center ${
-                          achievement.type === 'innovation' ? 'bg-purple-500' :
+                        <div className={`rounded-full p-4 mx-auto mb-3 w-16 h-16 flex items-center justify-center ${achievement.type === 'innovation' ? 'bg-purple-500' :
                           achievement.type === 'recognition' ? 'bg-green-500' :
-                          achievement.type === 'nominations' ? 'bg-blue-500' :
-                          'bg-orange-500'
-                        }`}>
+                            achievement.type === 'nominations' ? 'bg-blue-500' :
+                              'bg-orange-500'
+                          }`}>
                           {achievement.type === 'innovation' ? <Award className="h-8 w-8 text-white" /> :
-                           achievement.type === 'recognition' ? <Trophy className="h-8 w-8 text-white" /> :
-                           achievement.type === 'nominations' ? <Users className="h-8 w-8 text-white" /> :
-                           <Medal className="h-8 w-8 text-white" />}
+                            achievement.type === 'recognition' ? <Trophy className="h-8 w-8 text-white" /> :
+                              achievement.type === 'nominations' ? <Users className="h-8 w-8 text-white" /> :
+                                <Medal className="h-8 w-8 text-white" />}
                         </div>
 
                       </div>
@@ -1057,16 +1020,15 @@ export function Leaderboard() {
             <Minimize className="h-6 w-6" />
           </button>
         </div>
-        
+
         {/* Indicador de diapositiva */}
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
           {Array.from({ length: totalSlides }).map((_, index) => (
-            <div key={index} className={`w-3 h-3 rounded-full transition-colors ${
-              index === currentSlide ? 'bg-white' : 'bg-white/30'
-            }`} />
+            <div key={index} className={`w-3 h-3 rounded-full transition-colors ${index === currentSlide ? 'bg-white' : 'bg-white/30'
+              }`} />
           ))}
         </div>
-        
+
         <div className="container mx-auto p-8 h-full flex items-center justify-center">
           <div className="w-full">
             {renderSlide()}
@@ -1080,7 +1042,7 @@ export function Leaderboard() {
     <div className="space-y-6">
       {/* Botón de presentación */}
       <div className="flex justify-end mb-4">
-        <button 
+        <button
           onClick={togglePresentationMode}
           className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
         >
@@ -1107,7 +1069,7 @@ export function Leaderboard() {
           50% { background-position: 100% 50%; }
         }
       `}</style>
-      
+
       {/* Top performers showcase */}
       <TopPerformersSection pointsLeaderboard={pointsLeaderboard} grantsLeaderboard={grantsLeaderboard} />
 
@@ -1180,7 +1142,7 @@ export function Leaderboard() {
                   {pointsLeaderboard.reduce((sum, entry) => sum + entry.totalPoints, 0)}
                 </span>
               </div>
-              
+
               <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
                 <div className="flex items-center space-x-3">
                   <div className="bg-green-500 rounded-full p-2">
@@ -1192,7 +1154,7 @@ export function Leaderboard() {
                   {grantsLeaderboard.reduce((sum, entry) => sum + entry.totalDays, 0)}
                 </span>
               </div>
-              
+
               <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
                 <div className="flex items-center space-x-3">
                   <div className="bg-blue-500 rounded-full p-2">
@@ -1204,7 +1166,7 @@ export function Leaderboard() {
                   {grantsLeaderboard.filter(entry => entry.user.role === 'MEMBER' && entry.totalDays > 0).length}
                 </span>
               </div>
-              
+
               <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-lg">
                 <div className="flex items-center space-x-3">
                   <div className="bg-indigo-500 rounded-full p-2">

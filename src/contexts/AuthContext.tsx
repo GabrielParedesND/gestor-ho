@@ -7,9 +7,11 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   isAdmin: boolean;
+  isManager: boolean;
   isManagerOrAdmin: boolean;
   isLeader: boolean;
   canVote: boolean;
+  canNominate: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,9 +47,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signOut,
     isAdmin: authService.isAdmin(user),
+    isManager: authService.isManager(user),
     isManagerOrAdmin: authService.isManagerOrAdmin(user),
     isLeader: authService.isLeader(user),
     canVote: authService.canVote(user),
+    canNominate: authService.canNominate(user),
   };
 
   return (

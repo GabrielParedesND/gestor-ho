@@ -89,7 +89,7 @@ export const businessRules = {
 
   // Role-based permissions
   getVotingRoles(): UserRole[] {
-    return ['MANAGER', 'LEADER_DEV', 'LEADER_PO', 'LEADER_INFRA'];
+    return ['MANAGER', 'LEADER'];
   },
 
   getCandidateRoles(): UserRole[] {
@@ -97,7 +97,7 @@ export const businessRules = {
   },
 
   getLeaderRoles(): UserRole[] {
-    return ['LEADER_DEV', 'LEADER_PO', 'LEADER_INFRA'];
+    return ['LEADER'];
   },
 
   // Innovation points calculation

@@ -6,7 +6,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Database types
-export type UserRole = 'ADMIN' | 'MANAGER' | 'LEADER_DEV' | 'LEADER_PO' | 'LEADER_INFRA' | 'MEMBER';
+export type UserRole = 'ADMIN' | 'MANAGER' | 'LEADER' | 'MEMBER' | 'VIEWER';
 export type PeriodStatus = 'OPEN' | 'VOTING' | 'CLOSED';
 export type InitiativeType = 'DEV' | 'PO' | 'INFRA';
 export type InitiativeStatus = 'DRAFT' | 'PLANNED' | 'ADOPTED' | 'IMPACTFUL';

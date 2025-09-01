@@ -81,6 +81,10 @@ export const authService = {
     return user?.role === 'ADMIN';
   },
 
+  isManager(user: AuthUser | null): boolean {
+    return user?.role === 'MANAGER';
+  },
+
   isManagerOrAdmin(user: AuthUser | null): boolean {
     return user?.role === 'ADMIN' || user?.role === 'MANAGER';
   },
@@ -90,6 +94,11 @@ export const authService = {
   },
 
   canVote(user: AuthUser | null): boolean {
+    return user?.role === 'MANAGER' || 
+           user?.role === 'LEADER';
+  },
+
+  canNominate(user: AuthUser | null): boolean {
     return user?.role === 'MANAGER' || 
            user?.role === 'LEADER';
   },
