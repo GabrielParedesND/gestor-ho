@@ -22,7 +22,25 @@ export function Nominations() {
   const [selectedMember, setSelectedMember] = useState('');
   const [selectedProject, setSelectedProject] = useState('');
   const [reason, setReason] = useState('');
+  const [category, setCategory] = useState('');
+  const [contributionType, setContributionType] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const categories = [
+    { value: 'TECHNICAL', label: 'Técnico' },
+    { value: 'LEADERSHIP', label: 'Liderazgo' },
+    { value: 'COLLABORATION', label: 'Colaboración' },
+    { value: 'INNOVATION', label: 'Innovación' },
+    { value: 'MENTORSHIP', label: 'Mentoría' }
+  ];
+
+  const contributionTypes = [
+    { value: 'DELIVERY', label: 'Entrega' },
+    { value: 'QUALITY', label: 'Calidad' },
+    { value: 'INNOVATION', label: 'Innovación' },
+    { value: 'SUPPORT', label: 'Apoyo' },
+    { value: 'PROCESS', label: 'Procesos' }
+  ];
 
   useEffect(() => {
     loadData();
@@ -68,6 +86,8 @@ export function Nominations() {
         nomineeId: selectedMember,
         reason: reason.trim(),
         projectId: selectedProject || null,
+        category: category || 'COLLABORATION',
+        contributionType: contributionType || 'DELIVERY',
       });
 
       toast.success('Nominación creada exitosamente');
@@ -75,6 +95,8 @@ export function Nominations() {
       setSelectedMember('');
       setSelectedProject('');
       setReason('');
+      setCategory('');
+      setContributionType('');
       loadData();
     } catch (error: any) {
       const errorMessage = error.message || 'Error al crear nominación';
@@ -211,11 +233,23 @@ export function Nominations() {
                           </span>
                         </div>
                         <p className="text-sm text-gray-700 mb-2">"{nomination.reason}"</p>
-                        {nomination.project && (
-                          <Badge variant="outline" size="sm">
-                            {nomination.project.name}
-                          </Badge>
-                        )}
+                        <div className="flex flex-wrap gap-2">
+                          {nomination.project && (
+                            <Badge variant="outline" size="sm">
+                              {nomination.project.name}
+                            </Badge>
+                          )}
+                          {nomination.category && (
+                            <Badge variant="outline" size="sm" className="bg-blue-50 text-blue-700">
+                              {categories.find(c => c.value === nomination.category)?.label || nomination.category}
+                            </Badge>
+                          )}
+                          {nomination.contributionType && (
+                            <Badge variant="outline" size="sm" className="bg-purple-50 text-purple-700">
+                              {contributionTypes.find(t => t.value === nomination.contributionType)?.label || nomination.contributionType}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       {nomination.nominator.id === user?.id && (
                         <Button
@@ -293,6 +327,42 @@ export function Nominations() {
               {projects.map((project: any) => (
                 <option key={project.id} value={project.id}>
                   {project.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Categoría de contribución (opcional)
+            </label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Selecciona una categoría...</option>
+              {categories.map(cat => (
+                <option key={cat.value} value={cat.value}>
+                  {cat.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tipo de contribución (opcional)
+            </label>
+            <select
+              value={contributionType}
+              onChange={(e) => setContributionType(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Selecciona un tipo...</option>
+              {contributionTypes.map(type => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
                 </option>
               ))}
             </select>

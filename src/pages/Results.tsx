@@ -81,8 +81,26 @@ export function Results() {
     Object.values(nominationsByUser).forEach((group: any) => {
       summary.push(`${group.user.name}:`);
       group.nominations.forEach((nomination: any) => {
+        const categories = [
+          { value: 'TECHNICAL', label: 'Técnico' },
+          { value: 'LEADERSHIP', label: 'Liderazgo' },
+          { value: 'COLLABORATION', label: 'Colaboración' },
+          { value: 'INNOVATION', label: 'Innovación' },
+          { value: 'MENTORSHIP', label: 'Mentoría' }
+        ];
+        
+        const contributionTypes = [
+          { value: 'DELIVERY', label: 'Entrega' },
+          { value: 'QUALITY', label: 'Calidad' },
+          { value: 'INNOVATION', label: 'Innovación' },
+          { value: 'SUPPORT', label: 'Apoyo' },
+          { value: 'PROCESS', label: 'Procesos' }
+        ];
+        
         const project = nomination.project ? ` (${nomination.project.name})` : '';
-        summary.push(`  • ${nomination.nominator.name}: "${nomination.reason}"${project}`);
+        const category = nomination.category ? ` [${categories.find(c => c.value === nomination.category)?.label || nomination.category}]` : '';
+        const contributionType = nomination.contributionType ? ` [${contributionTypes.find(t => t.value === nomination.contributionType)?.label || nomination.contributionType}]` : '';
+        summary.push(`  • ${nomination.nominator.name}: "${nomination.reason}"${project}${category}${contributionType}`);
       });
       summary.push('');
     });
@@ -150,13 +168,38 @@ export function Results() {
                 ${Object.values(nominationsByUser).map((group: any) => `
                     <div class="nominee">
                         <h3>👤 ${group.user.name}</h3>
-                        ${group.nominations.map((nomination: any) => `
+                        ${group.nominations.map((nomination: any) => {
+                          const categories = [
+                            { value: 'TECHNICAL', label: 'Técnico' },
+                            { value: 'LEADERSHIP', label: 'Liderazgo' },
+                            { value: 'COLLABORATION', label: 'Colaboración' },
+                            { value: 'INNOVATION', label: 'Innovación' },
+                            { value: 'MENTORSHIP', label: 'Mentoría' }
+                          ];
+                          
+                          const contributionTypes = [
+                            { value: 'DELIVERY', label: 'Entrega' },
+                            { value: 'QUALITY', label: 'Calidad' },
+                            { value: 'INNOVATION', label: 'Innovación' },
+                            { value: 'SUPPORT', label: 'Apoyo' },
+                            { value: 'PROCESS', label: 'Procesos' }
+                          ];
+                          
+                          const categoryLabel = nomination.category ? categories.find(c => c.value === nomination.category)?.label || nomination.category : '';
+                          const contributionTypeLabel = nomination.contributionType ? contributionTypes.find(t => t.value === nomination.contributionType)?.label || nomination.contributionType : '';
+                          
+                          return `
                             <div class="nomination">
                                 <div class="nominator">💬 ${nomination.nominator.name}:</div>
                                 <div class="reason">"${nomination.reason}"</div>
-                                ${nomination.project ? `<span class="project">📁 ${nomination.project.name}</span>` : ''}
+                                <div style="margin-top: 4px;">
+                                  ${nomination.project ? `<span class="project">📁 ${nomination.project.name}</span>` : ''}
+                                  ${categoryLabel ? `<span class="project" style="background: #e3f2fd; color: #1976d2; margin-left: 4px;">🏷️ ${categoryLabel}</span>` : ''}
+                                  ${contributionTypeLabel ? `<span class="project" style="background: #f3e5f5; color: #7b1fa2; margin-left: 4px;">⚡ ${contributionTypeLabel}</span>` : ''}
+                                </div>
                             </div>
-                        `).join('')}
+                          `;
+                        }).join('')}
                     </div>
                 `).join('')}
             </div>
@@ -330,18 +373,48 @@ export function Results() {
                       </div>
                     </div>
                     <div className="space-y-2 ml-11">
-                      {group.nominations.map((nomination: any) => (
-                        <div key={nomination.id} className="text-sm text-gray-700 bg-white rounded px-3 py-2">
-                          <div className="mb-2">
-                            <span className="font-medium">{nomination.nominator.name}:</span> "{nomination.reason}"
+                      {group.nominations.map((nomination: any) => {
+                        const categories = [
+                          { value: 'TECHNICAL', label: 'Técnico' },
+                          { value: 'LEADERSHIP', label: 'Liderazgo' },
+                          { value: 'COLLABORATION', label: 'Colaboración' },
+                          { value: 'INNOVATION', label: 'Innovación' },
+                          { value: 'MENTORSHIP', label: 'Mentoría' }
+                        ];
+                        
+                        const contributionTypes = [
+                          { value: 'DELIVERY', label: 'Entrega' },
+                          { value: 'QUALITY', label: 'Calidad' },
+                          { value: 'INNOVATION', label: 'Innovación' },
+                          { value: 'SUPPORT', label: 'Apoyo' },
+                          { value: 'PROCESS', label: 'Procesos' }
+                        ];
+                        
+                        return (
+                          <div key={nomination.id} className="text-sm text-gray-700 bg-white rounded px-3 py-2">
+                            <div className="mb-2">
+                              <span className="font-medium">{nomination.nominator.name}:</span> "{nomination.reason}"
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {nomination.project && (
+                                <Badge variant="outline" size="sm">
+                                  {nomination.project.name}
+                                </Badge>
+                              )}
+                              {nomination.category && (
+                                <Badge variant="outline" size="sm" className="bg-blue-50 text-blue-700">
+                                  {categories.find(c => c.value === nomination.category)?.label || nomination.category}
+                                </Badge>
+                              )}
+                              {nomination.contributionType && (
+                                <Badge variant="outline" size="sm" className="bg-purple-50 text-purple-700">
+                                  {contributionTypes.find(t => t.value === nomination.contributionType)?.label || nomination.contributionType}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
-                          {nomination.project && (
-                            <Badge variant="outline" size="sm">
-                              {nomination.project.name}
-                            </Badge>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ));

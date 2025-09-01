@@ -316,7 +316,7 @@ app.post('/api/periods/:periodId/close', async (req, res) => {
 // Nominations routes
 app.post('/api/nominations', async (req, res) => {
   try {
-    const { periodId, nominatorId, nomineeId, reason, projectId } = req.body;
+    const { periodId, nominatorId, nomineeId, reason, projectId, category, contributionType } = req.body;
     
     // Verificar que el nominador puede nominar (MANAGER, LEADER, ADMIN)
     const nominator = await prisma.user.findUnique({ where: { id: nominatorId } });
@@ -337,6 +337,8 @@ app.post('/api/nominations', async (req, res) => {
         nomineeId,
         reason,
         projectId: projectId || null,
+        category: category || 'COLLABORATION',
+        contributionType: contributionType || 'DELIVERY',
       },
       include: {
         nominator: true,

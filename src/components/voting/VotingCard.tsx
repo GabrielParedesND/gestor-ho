@@ -84,18 +84,48 @@ export function VotingCard({
               Nominado por ({(user as any).nominations.length}):
             </p>
             <div className="md:flex md:flex-wrap md:gap-2">
-              {(user as any).nominations.map((nomination: any) => (
-                <div key={nomination.id} className="text-xs text-gray-600 bg-gray-100 rounded px-2 py-1 md:inline-block">
-                  <div className="mb-1 md:mb-0">
-                    <span className="font-medium">{nomination.nominator.name}:</span> "{nomination.reason}"
-                    {nomination.project && (
-                      <Badge variant="outline" size="sm" className="text-xs ml-1">
-                        {nomination.project.name}
-                      </Badge>
-                    )}
+              {(user as any).nominations.map((nomination: any) => {
+                const categories = [
+                  { value: 'TECHNICAL', label: 'Técnico' },
+                  { value: 'LEADERSHIP', label: 'Liderazgo' },
+                  { value: 'COLLABORATION', label: 'Colaboración' },
+                  { value: 'INNOVATION', label: 'Innovación' },
+                  { value: 'MENTORSHIP', label: 'Mentoría' }
+                ];
+                
+                const contributionTypes = [
+                  { value: 'DELIVERY', label: 'Entrega' },
+                  { value: 'QUALITY', label: 'Calidad' },
+                  { value: 'INNOVATION', label: 'Innovación' },
+                  { value: 'SUPPORT', label: 'Apoyo' },
+                  { value: 'PROCESS', label: 'Procesos' }
+                ];
+                
+                return (
+                  <div key={nomination.id} className="text-xs text-gray-600 bg-gray-100 rounded px-2 py-1 md:inline-block">
+                    <div className="mb-1 md:mb-0">
+                      <span className="font-medium">{nomination.nominator.name}:</span> "{nomination.reason}"
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {nomination.project && (
+                          <Badge variant="outline" size="sm" className="text-xs">
+                            {nomination.project.name}
+                          </Badge>
+                        )}
+                        {nomination.category && (
+                          <Badge variant="outline" size="sm" className="text-xs bg-blue-50 text-blue-700">
+                            {categories.find(c => c.value === nomination.category)?.label || nomination.category}
+                          </Badge>
+                        )}
+                        {nomination.contributionType && (
+                          <Badge variant="outline" size="sm" className="text-xs bg-purple-50 text-purple-700">
+                            {contributionTypes.find(t => t.value === nomination.contributionType)?.label || nomination.contributionType}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

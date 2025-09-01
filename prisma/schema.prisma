@@ -78,13 +78,15 @@ model Period {
 }
 
 model Nomination {
-  id           String   @id @default(cuid())
-  periodId     String   @map("period_id")
-  nominatorId  String   @map("nominator_id")
-  nomineeId    String   @map("nominee_id")
-  reason       String
-  projectId    String?  @map("project_id")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id                 String             @id @default(cuid())
+  periodId           String             @map("period_id")
+  nominatorId        String             @map("nominator_id")
+  nomineeId          String             @map("nominee_id")
+  reason             String
+  projectId          String?            @map("project_id")
+  category           ContributionCategory @default(COLLABORATION)
+  contributionType   ContributionType   @default(DELIVERY)
+  createdAt          DateTime           @default(now()) @map("created_at")
 
   // Relations
   period    Period  @relation(fields: [periodId], references: [id])
@@ -302,4 +304,20 @@ enum ProjectStatus {
   COMPLETED
   PAUSED
   CANCELLED
+}
+
+enum ContributionCategory {
+  TECHNICAL
+  LEADERSHIP
+  COLLABORATION
+  INNOVATION
+  MENTORSHIP
+}
+
+enum ContributionType {
+  DELIVERY
+  QUALITY
+  INNOVATION
+  SUPPORT
+  PROCESS
 }
