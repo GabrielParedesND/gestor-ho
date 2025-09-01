@@ -28,9 +28,9 @@ const navigation = [
   { name: 'Resultados', href: '/results', icon: TrendingUp, roles: ['MANAGER', 'ADMIN'] },
   
   // Beneficios y reconocimientos
-  { name: 'Mis Días HO', href: '/grants', icon: Calendar, roles: ['LEADER_DEV', 'LEADER_PO', 'LEADER_INFRA', 'MEMBER'] },
-  { name: 'Iniciativas', href: '/initiatives', icon: Target, roles: ['LEADER_DEV', 'LEADER_PO', 'LEADER_INFRA', 'MANAGER'] },
-  { name: 'Leaderboard', href: '/leaderboard', icon: Trophy, roles: ['ALL'] },
+  { name: 'Mis Días HO', href: '/grants', icon: Calendar, roles: ['LEADER', 'MEMBER'] },
+  { name: 'Iniciativas', href: '/initiatives', icon: Target, roles: ['LEADER', 'MANAGER'] },
+  { name: 'Leaderboard', href: '/leaderboard', icon: Trophy, roles: ['ALL', 'VIEWER'] },
   
   // Administración
   { name: 'Períodos', href: '/periods', icon: Clock, roles: ['MANAGER', 'ADMIN'] },
@@ -54,6 +54,9 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
     if (roles.includes('ADMIN') && isAdmin) return true;
     if (roles.includes('MANAGER') && isManagerOrAdmin) return true;
     if (roles.includes('LEADER') && isLeader) return true;
+    if (user?.role === 'VIEWER') {
+      return roles.includes('ALL') || roles.includes('VIEWER');
+    }
     return roles.includes(user?.role || '');
   };
 

@@ -267,10 +267,9 @@ model Setting {
 enum UserRole {
   ADMIN
   MANAGER
-  LEADER_DEV
-  LEADER_PO
-  LEADER_INFRA
+  LEADER
   MEMBER
+  VIEWER
 }
 
 enum PeriodStatus {

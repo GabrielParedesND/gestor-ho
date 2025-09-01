@@ -97,9 +97,8 @@ export function Users() {
     switch (role) {
       case 'ADMIN': return 'error';
       case 'MANAGER': return 'warning';
-      case 'LEADER_DEV':
-      case 'LEADER_PO':
-      case 'LEADER_INFRA': return 'info';
+      case 'LEADER': return 'info';
+      case 'VIEWER': return 'secondary';
       default: return 'default';
     }
   };
@@ -108,10 +107,9 @@ export function Users() {
     switch (role) {
       case 'ADMIN': return 'Administrador';
       case 'MANAGER': return 'Manager';
-      case 'LEADER_DEV': return 'Líder Dev';
-      case 'LEADER_PO': return 'Líder PO';
-      case 'LEADER_INFRA': return 'Líder Infra';
+      case 'LEADER': return 'Líder';
       case 'MEMBER': return 'Miembro';
+      case 'VIEWER': return 'Visualizador';
       default: return role;
     }
   };
@@ -263,11 +261,10 @@ export function Users() {
               required
             >
               <option value="MEMBER">Miembro</option>
-              <option value="LEADER_DEV">Líder Dev</option>
-              <option value="LEADER_PO">Líder PO</option>
-              <option value="LEADER_INFRA">Líder Infra</option>
+              <option value="LEADER">Líder</option>
               <option value="MANAGER">Manager</option>
               <option value="ADMIN">Administrador</option>
+              <option value="VIEWER">Visualizador</option>
             </select>
           </div>
 

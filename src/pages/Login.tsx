@@ -89,7 +89,9 @@ export function Login() {
               <p><strong>Manager:</strong> manager@example.com / Manager123!</p>
               <p><strong>Líder Dev:</strong> dev@example.com / Dev123!</p>
               <p><strong>Líder PO:</strong> po@example.com / Po123!</p>
+              <p><strong>Líder Ops:</strong> ops@example.com / Ops123!</p>
               <p><strong>Miembro:</strong> member@example.com / Member123!</p>
+              <p><strong>Visualizador:</strong> viewer@example.com / Viewer123!</p>
             </div>
           </div>
         </div>

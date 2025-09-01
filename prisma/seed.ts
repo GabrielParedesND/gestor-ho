@@ -25,21 +25,30 @@ async function main() {
     },
   });
 
-  const devLeader = await prisma.user.create({
+  const leaderDev = await prisma.user.create({
     data: {
-      name: 'Dev Leader',
+      name: 'Líder Desarrollo',
       email: 'dev@example.com',
       password: await bcrypt.hash('Dev123!', 10),
-      role: 'LEADER_DEV',
+      role: 'LEADER',
     },
   });
 
-  const poLeader = await prisma.user.create({
+  const leaderPO = await prisma.user.create({
     data: {
-      name: 'PO Leader',
+      name: 'Líder PO',
       email: 'po@example.com',
       password: await bcrypt.hash('Po123!', 10),
-      role: 'LEADER_PO',
+      role: 'LEADER',
+    },
+  });
+
+  const leaderOps = await prisma.user.create({
+    data: {
+      name: 'Líder Operaciones',
+      email: 'ops@example.com',
+      password: await bcrypt.hash('Ops123!', 10),
+      role: 'LEADER',
     },
   });
 
@@ -49,6 +58,15 @@ async function main() {
       email: 'member@example.com',
       password: await bcrypt.hash('Member123!', 10),
       role: 'MEMBER',
+    },
+  });
+
+  const viewer = await prisma.user.create({
+    data: {
+      name: 'Viewer Usuario',
+      email: 'viewer@example.com',
+      password: await bcrypt.hash('Viewer123!', 10),
+      role: 'VIEWER',
     },
   });
 

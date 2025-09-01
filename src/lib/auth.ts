@@ -86,15 +86,11 @@ export const authService = {
   },
 
   isLeader(user: AuthUser | null): boolean {
-    return user?.role === 'LEADER_DEV' || 
-           user?.role === 'LEADER_PO' || 
-           user?.role === 'LEADER_INFRA';
+    return user?.role === 'LEADER';
   },
 
   canVote(user: AuthUser | null): boolean {
     return user?.role === 'MANAGER' || 
-           user?.role === 'LEADER_DEV' || 
-           user?.role === 'LEADER_PO' || 
-           user?.role === 'LEADER_INFRA';
+           user?.role === 'LEADER';
   },
 };
