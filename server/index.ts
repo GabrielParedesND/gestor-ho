@@ -2,16 +2,52 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import bcrypt from 'bcrypt';
+import multer from 'multer';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { PrismaClient } from '@prisma/client';
 
 dotenv.config();
+
+// Para ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3001;
 
+// Configuración de multer para subida de archivos
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'public/uploads/special-mentions/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB límite
+  },
+  fileFilter: (req, file, cb) => {
+    // Solo permitir imágenes
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Solo se permiten archivos de imagen'));
+    }
+  }
+});
+
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
+
+// Servir archivos estáticos desde public
+app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
 
 // Auth routes
 app.post('/api/auth/signin', async (req, res) => {
@@ -1137,6 +1173,206 @@ app.get('/api/leaderboard/grants', async (req, res) => {
     res.json(sortedGrants);
   } catch (error) {
     res.status(500).json({ error: 'Error al obtener leaderboard de grants' });
+  }
+});
+
+// Special Mentions routes
+
+// Upload endpoint para imágenes de menciones especiales
+app.post('/api/special-mentions/upload', upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se subió ningún archivo' });
+    }
+
+    const imageUrl = `/uploads/special-mentions/${req.file.filename}`;
+    res.json({ imageUrl });
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    res.status(500).json({ error: 'Error al subir la imagen' });
+  }
+});
+
+app.get('/api/special-mentions', async (req, res) => {
+  try {
+    const mentions = await prisma.specialMention.findMany({
+      include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(mentions);
+  } catch (error) {
+    console.error('Error getting special mentions:', error);
+    res.status(500).json({ error: 'Error al obtener menciones especiales' });
+  }
+});
+
+app.get('/api/special-mentions/active', async (req, res) => {
+  try {
+    const now = new Date();
+    const activeMentions = await prisma.specialMention.findMany({
+      where: {
+        startDate: { lte: now },
+        endDate: { gte: now }
+      },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(activeMentions);
+  } catch (error) {
+    console.error('Error getting active special mentions:', error);
+    res.status(500).json({ error: 'Error al obtener menciones especiales activas' });
+  }
+});
+
+app.post('/api/special-mentions', async (req, res) => {
+  try {
+    const { title, description, startDate, endDate, imageUrl, createdBy } = req.body;
+    
+    // Validar campos requeridos
+    if (!title || !description || !startDate || !endDate || !createdBy) {
+      return res.status(400).json({ error: 'Título, descripción, fechas y creador son requeridos' });
+    }
+    
+    // Verificar que el usuario puede crear menciones (LEADER, MANAGER)
+    const user = await prisma.user.findUnique({ where: { id: createdBy } });
+    if (!user || !['LEADER', 'MANAGER'].includes(user.role)) {
+      return res.status(403).json({ error: 'No tienes permisos para crear menciones especiales' });
+    }
+    
+    // Validar fechas
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (start >= end) {
+      return res.status(400).json({ error: 'La fecha de inicio debe ser anterior a la fecha de fin' });
+    }
+    
+    const mention = await prisma.specialMention.create({
+      data: {
+        title,
+        description,
+        startDate: start,
+        endDate: end,
+        imageUrl: imageUrl || null,
+        createdBy
+      },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      }
+    });
+    
+    res.json(mention);
+  } catch (error) {
+    console.error('Error creating special mention:', error);
+    res.status(500).json({ error: 'Error al crear mención especial' });
+  }
+});
+
+app.put('/api/special-mentions/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, startDate, endDate, imageUrl, userId } = req.body;
+    
+    // Verificar que la mención existe
+    const existingMention = await prisma.specialMention.findUnique({
+      where: { id }
+    });
+    
+    if (!existingMention) {
+      return res.status(404).json({ error: 'Mención especial no encontrada' });
+    }
+    
+    // Verificar permisos: solo el creador o un manager puede editar
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || (existingMention.createdBy !== userId && user.role !== 'MANAGER')) {
+      return res.status(403).json({ error: 'No tienes permisos para editar esta mención' });
+    }
+    
+    // Validar fechas si se proporcionan
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      if (start >= end) {
+        return res.status(400).json({ error: 'La fecha de inicio debe ser anterior a la fecha de fin' });
+      }
+    }
+    
+    const mention = await prisma.specialMention.update({
+      where: { id },
+      data: {
+        ...(title && { title }),
+        ...(description && { description }),
+        ...(startDate && { startDate: new Date(startDate) }),
+        ...(endDate && { endDate: new Date(endDate) }),
+        ...(imageUrl !== undefined && { imageUrl: imageUrl || null })
+      },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            email: true
+          }
+        }
+      }
+    });
+    
+    res.json(mention);
+  } catch (error) {
+    console.error('Error updating special mention:', error);
+    res.status(500).json({ error: 'Error al actualizar mención especial' });
+  }
+});
+
+app.delete('/api/special-mentions/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.body;
+    
+    // Verificar que la mención existe
+    const existingMention = await prisma.specialMention.findUnique({
+      where: { id }
+    });
+    
+    if (!existingMention) {
+      return res.status(404).json({ error: 'Mención especial no encontrada' });
+    }
+    
+    // Verificar permisos: solo el creador o un manager puede eliminar
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user || (existingMention.createdBy !== userId && user.role !== 'MANAGER')) {
+      return res.status(403).json({ error: 'No tienes permisos para eliminar esta mención' });
+    }
+    
+    await prisma.specialMention.delete({
+      where: { id }
+    });
+    
+    res.json({ message: 'Mención especial eliminada correctamente' });
+  } catch (error) {
+    console.error('Error deleting special mention:', error);
+    res.status(500).json({ error: 'Error al eliminar mención especial' });
   }
 });
 

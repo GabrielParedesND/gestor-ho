@@ -19,6 +19,7 @@ import { Settings } from './pages/Settings';
 import { Calendar } from './pages/Calendar';
 import { Nominations } from './pages/Nominations';
 import { Projects } from './pages/Projects';
+import SpecialMentions from './pages/SpecialMentions';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -53,6 +54,7 @@ function AppRoutes() {
       <Route path="/nominations" element={<ProtectedRoute><Nominations /></ProtectedRoute>} />
       <Route path="/voting" element={<ProtectedRoute><Voting /></ProtectedRoute>} />
       <Route path="/initiatives" element={<ProtectedRoute><Initiatives /></ProtectedRoute>} />
+      <Route path="/special-mentions" element={<ProtectedRoute><SpecialMentions /></ProtectedRoute>} />
       <Route path="/grants" element={<ProtectedRoute><Grants /></ProtectedRoute>} />
       <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
       <Route path="/leaderboard" element={<ProtectedRoute><Leaderboard /></ProtectedRoute>} />

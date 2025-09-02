@@ -283,6 +283,75 @@ class ApiClient {
       return [];
     }
   }
+
+  // Special Mentions
+  async getSpecialMentions() {
+    try {
+      return await this.request('/special-mentions');
+    } catch (error) {
+      console.warn('Error al cargar menciones especiales');
+      return [];
+    }
+  }
+
+  async getActiveSpecialMentions() {
+    try {
+      return await this.request('/special-mentions/active');
+    } catch (error) {
+      console.warn('Error al cargar menciones especiales activas');
+      return [];
+    }
+  }
+
+  async uploadSpecialMentionImage(file: File) {
+    try {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch(`${API_BASE_URL}/special-mentions/upload`, {
+        method: 'POST',
+        body: formData, // No agregar Content-Type para FormData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Error en la petición' }));
+        const error = new Error(errorData.error || 'Error en la petición') as any;
+        error.response = {
+          status: response.status,
+          data: errorData
+        };
+        throw error;
+      }
+
+      return response.json();
+    } catch (error) {
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('No se puede conectar al servidor. Asegúrate de que esté ejecutándose en http://localhost:3001');
+      }
+      throw error;
+    }
+  }
+
+  async createSpecialMention(mentionData: any) {
+    return this.request('/special-mentions', {
+      method: 'POST',
+      body: JSON.stringify(mentionData),
+    });
+  }
+
+  async updateSpecialMention(id: string, mentionData: any) {
+    return this.request(`/special-mentions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(mentionData),
+    });
+  }
+
+  async deleteSpecialMention(id: string, userId: string) {
+    return this.request(`/special-mentions/${id}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ userId }),
+    });
+  }
 }
 
 export const apiClient = new ApiClient();

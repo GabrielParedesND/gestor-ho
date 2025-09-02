@@ -37,6 +37,7 @@ model User {
   initiativesApproved Initiative[]         @relation("ApproverInitiatives")
   pointsApproved      InnovationPoint[]    @relation("ApproverPoints")
   talliesDiscarded    Tally[]              @relation("DiscardedVoterTallies")
+  specialMentions     SpecialMention[]
 
   @@map("users")
 }
@@ -261,6 +262,23 @@ model Setting {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("settings")
+}
+
+model SpecialMention {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  startDate   DateTime @map("start_date")
+  endDate     DateTime @map("end_date")
+  imageUrl    String?  @map("image_url")
+  createdBy   String   @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  creator     User     @relation(fields: [createdBy], references: [id])
+
+  @@map("special_mentions")
 }
 
 // Enums

@@ -1,11 +1,69 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Trophy, Medal, Award, TrendingUp, Calendar, Users, Target, Maximize, Minimize, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { apiClient } from '../lib/api';
 import { safeFormat } from '../lib/dateUtils';
 import { getCategoryLabel, getContributionTypeLabel } from '../lib/constants';
-import type { InnovationPoint, HomeOfficeGrant, User } from '@prisma/client';
+
+// Types
+type User = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+};
+
+type Period = {
+  id: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+};
+
+type SpecialMention = {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl?: string;
+  isActive: boolean;
+  validUntil: string;
+  createdBy: User;
+};
+
+type LeaderboardEntry = {
+  user: User;
+  totalPoints: number;
+  totalDays: number;
+  grantsCount: number;
+  recentPoints: number;
+};
+
+type Nomination = {
+  id: string;
+  user: User;
+  nominatedBy: User;
+  reason: string;
+  period: Period;
+};
+
+type Result = {
+  id: string;
+  user: User;
+  resultDays: number;
+  reason: string;
+  period: Period;
+};
+
+type Achievement = {
+  id: string;
+  user: User;
+  type: string;
+  value: number | string;
+  reason: string;
+  createdAt: Date;
+};
 
 // Componentes modulares del leaderboard
 function TopPerformersSection({ pointsLeaderboard, grantsLeaderboard }: any) {
@@ -50,7 +108,7 @@ function TopPerformersSection({ pointsLeaderboard, grantsLeaderboard }: any) {
             <h3 className="font-bold text-green-800 mb-2">🌟 Más Reconocido</h3>
             <p className="text-xs text-green-600 mb-3">Quien más días de Home Office ha ganado por recibir votos de managers y líderes</p>
             {(() => {
-              const topMember = grantsLeaderboard.find((entry: any) => entry.user.role === 'MEMBER');
+              const topMember = grantsLeaderboard.find((entry: any) => entry.user.role === 'MEMBER' && entry.totalDays > 0);
               return topMember ? (
                 <>
                   <p className="text-lg font-bold text-green-900">{topMember.user?.name || 'Usuario desconocido'}</p>
@@ -75,13 +133,13 @@ function TopPerformersSection({ pointsLeaderboard, grantsLeaderboard }: any) {
           <CardContent className="text-center p-6 h-full flex flex-col justify-center items-center">
             <TrendingUp className="h-12 w-12 text-blue-500 mx-auto mb-3" />
             <h3 className="font-bold text-blue-800 mb-2">🔥 Racha Activa</h3>
-            <p className="text-xs text-blue-600 mb-3">Miembro con más períodos consecutivos siendo reconocido</p>
+            <p className="text-xs text-blue-600 mb-3">Miembro con más períodos ganando días consecutivos</p>
             {(() => {
               const memberWithStreak = grantsLeaderboard.find((entry: any) => entry.user.role === 'MEMBER' && entry.grantsCount >= 2);
               return memberWithStreak ? (
                 <>
                   <p className="text-lg font-bold text-blue-900">{memberWithStreak.user?.name || 'Usuario desconocido'}</p>
-                  <p className="text-sm text-blue-700">{memberWithStreak.grantsCount} períodos seguidos</p>
+                  <p className="text-sm text-blue-700">{memberWithStreak.grantsCount} períodos consecutivos</p>
                   <Badge className="bg-blue-200 text-blue-800 mt-3 inline-block">¡Imparable!</Badge>
                 </>
               ) : (
@@ -182,7 +240,7 @@ function StatisticsSection({ grantsLeaderboard, pointsLeaderboard }: any) {
             </div>
             <div>
               <span className="text-orange-800">🔥 Miembros en Racha</span>
-              <p className="text-sm text-orange-600 font-normal">Reconocidos en múltiples períodos</p>
+              <p className="text-sm text-orange-600 font-normal">Ganaron días en múltiples períodos consecutivos</p>
             </div>
           </CardTitle>
         </CardHeader>
@@ -190,6 +248,7 @@ function StatisticsSection({ grantsLeaderboard, pointsLeaderboard }: any) {
           <div className="space-y-3 max-h-64 overflow-y-auto">
             {grantsLeaderboard
               .filter((entry: any) => entry.user.role === 'MEMBER' && entry.grantsCount >= 2)
+              .slice(0, 5)
               .map((entry: any, index: number) => (
                 <div key={entry.user?.id || index} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-200">
                   <div className="flex items-center space-x-3">
@@ -199,7 +258,7 @@ function StatisticsSection({ grantsLeaderboard, pointsLeaderboard }: any) {
                     </div>
                     <div>
                       <p className="font-medium text-orange-900">{entry.user?.name || 'Usuario desconocido'}</p>
-                      <p className="text-sm text-orange-700">{entry.totalDays} días ganados</p>
+                      <p className="text-sm text-orange-700">{entry.totalDays} días ganados en total</p>
                     </div>
                   </div>
                   <Badge className="bg-orange-200 text-orange-800 animate-pulse">
@@ -211,7 +270,7 @@ function StatisticsSection({ grantsLeaderboard, pointsLeaderboard }: any) {
               <div className="text-center py-8 text-orange-500">
                 <TrendingUp className="h-12 w-12 mx-auto mb-4 text-orange-300" />
                 <p className="font-medium">🔥 ¡Sé el primero en crear una racha!</p>
-                <p className="text-sm text-orange-400 mt-2">Mantén tu excelencia por varios períodos consecutivos</p>
+                <p className="text-sm text-orange-400 mt-2">Gana días en múltiples períodos consecutivos</p>
               </div>
             )}
           </div>
@@ -357,128 +416,10 @@ function RecentAchievementsSection({ recentAchievements, safeFormat }: any) {
   );
 }
 
-// Componente para mostrar reconocimientos especiales en slides
-function SpecialRecognitionsSlide() {
-  const [nominations, setNominations] = useState([]);
-  const [results, setResults] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadNominationsData();
-  }, []);
-
-  const loadNominationsData = async () => {
-    try {
-      const periods = await apiClient.getPeriods();
-      const recentPeriods = periods.slice(0, 3);
-
-      let allNominations = [];
-      let allResults = [];
-
-      for (const period of recentPeriods) {
-        try {
-          const [periodNominations, periodResults] = await Promise.all([
-            apiClient.getNominations(period.id),
-            apiClient.getPeriodResults(period.id)
-          ]);
-
-          allNominations = [...allNominations, ...periodNominations.map(n => ({ ...n, period }))];
-          allResults = [...allResults, ...periodResults];
-        } catch (error) {
-          console.warn(`Error loading period ${period.id}`);
-        }
-      }
-
-      setNominations(allNominations);
-      setResults(allResults);
-    } catch (error) {
-      console.warn('Error loading nominations data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const winnersIds = results.filter(r => r.resultDays > 0).map(r => r.user?.id);
-  const nominationsByUser = nominations.reduce((acc: any, nomination: any) => {
-    const userId = nomination.nominee.id;
-    if (!winnersIds.includes(userId)) {
-      if (!acc[userId]) {
-        acc[userId] = {
-          user: nomination.nominee,
-          nominations: [],
-        };
-      }
-      acc[userId].nominations.push(nomination);
-    }
-    return acc;
-  }, {});
-
-  const specialRecognitions = Object.values(nominationsByUser).slice(0, 4);
-
-  return (
-    <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 shadow-2xl">
-      <h3 className="text-4xl font-bold text-yellow-400 mb-8 text-center">🌟 RECONOCIMIENTOS ESPECIALES</h3>
-      <div className="text-center mb-8">
-        <p className="text-2xl text-yellow-300">¡Sigue así! Tu trabajo es valorado y cada esfuerzo te acerca más al reconocimiento</p>
-      </div>
-      {loading ? (
-        <div className="text-center py-16">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-yellow-400 mx-auto" />
-        </div>
-      ) : specialRecognitions.length > 0 ? (
-        <div className="grid grid-cols-2 gap-8">
-          {specialRecognitions.map((recognition: any) => (
-            <div key={recognition.user.id} className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 shadow-lg">
-              <div className="flex items-center space-x-4 mb-4">
-                <div className="h-12 w-12 bg-yellow-400 rounded-full flex items-center justify-center">
-                  <span className="text-black font-bold text-lg">
-                    {recognition.user.name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-white">{recognition.user.name}</p>
-                  <p className="text-yellow-300">{recognition.nominations.length} nominación{recognition.nominations.length !== 1 ? 'es' : ''}</p>
-                </div>
-              </div>
-              <div className="space-y-3">
-                {recognition.nominations.slice(0, 2).map((nomination: any) => (
-                  <div key={nomination.id} className="bg-yellow-400/10 rounded-lg p-3">
-                    <p className="text-yellow-200 text-sm mb-2">
-                      <span className="font-bold">{nomination.nominator.name}:</span> "{nomination.reason}"
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      {nomination.category && (
-                        <span className="bg-blue-500/20 text-blue-300 px-2 py-1 rounded text-xs">
-                          {getCategoryLabel(nomination.category)}
-                        </span>
-                      )}
-                      {nomination.contributionType && (
-                        <span className="bg-purple-500/20 text-purple-300 px-2 py-1 rounded text-xs">
-                          {getContributionTypeLabel(nomination.contributionType)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-16">
-          <Award className="h-24 w-24 mx-auto mb-6 text-yellow-300" />
-          <p className="text-3xl font-bold text-yellow-400">🎆 ¡Próximamente aparecerán aquí!</p>
-          <p className="text-xl text-yellow-300 mt-4">Cada contribución cuenta y será reconocida</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
 // Componente para mostrar reconocimientos por contribución
-function RecongnitionsSection() {
-  const [nominations, setNominations] = useState([]);
-  const [results, setResults] = useState([]);
+function RecognitionsSection() {
+  const [nominations, setNominations] = useState<Nomination[]>([]);
+  const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -490,8 +431,8 @@ function RecongnitionsSection() {
       const periods = await apiClient.getPeriods();
       const recentPeriods = periods.slice(0, 3);
 
-      let allNominations = [];
-      let allResults = [];
+      let allNominations: Nomination[] = [];
+      let allResults: Result[] = [];
 
       for (const period of recentPeriods) {
         try {
@@ -500,7 +441,7 @@ function RecongnitionsSection() {
             apiClient.getPeriodResults(period.id)
           ]);
 
-          allNominations = [...allNominations, ...periodNominations.map(n => ({ ...n, period }))];
+          allNominations = [...allNominations, ...periodNominations.map((n: any) => ({ ...n, period }))];
           allResults = [...allResults, ...periodResults];
         } catch (error) {
           console.warn(`Error loading period ${period.id}`);
@@ -646,12 +587,37 @@ function RecongnitionsSection() {
 
 export function Leaderboard() {
   const [loading, setLoading] = useState(true);
-  const [pointsLeaderboard, setPointsLeaderboard] = useState([]);
-  const [grantsLeaderboard, setGrantsLeaderboard] = useState([]);
-  const [recentAchievements, setRecentAchievements] = useState([]);
+  const [pointsLeaderboard, setPointsLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [grantsLeaderboard, setGrantsLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [recentAchievements, setRecentAchievements] = useState<Achievement[]>([]);
+  const [specialMentions, setSpecialMentions] = useState<SpecialMention[]>([]);
+  const [specialRecognitions, setSpecialRecognitions] = useState<any[]>([]);
   const [presentationMode, setPresentationMode] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const totalSlides = 5;
+  
+  // Calcular total de slides dinámicamente
+  const calculateTotalSlides = () => {
+    const activeMentions = specialMentions || [];
+    const mentionsWithImage = activeMentions.filter((mention: any) => mention.imageUrl);
+    const mentionsWithoutImage = activeMentions.filter((mention: any) => !mention.imageUrl);
+    
+    let totalSlides = 4; // slides base: 0=intro, 1=líderes, 2=estadísticas, 3=reconocimientos por contribución
+    
+    // Agregar slides individuales para menciones con imagen
+    totalSlides += mentionsWithImage.length;
+    
+    // Agregar un slide para menciones sin imagen (si las hay)
+    if (mentionsWithoutImage.length > 0) {
+      totalSlides += 1;
+    }
+    
+    // Agregar un slide final de logros recientes
+    totalSlides += 1;
+    
+    return totalSlides;
+  };
+  
+  const totalSlides = calculateTotalSlides();
 
   useEffect(() => {
     loadLeaderboardData();
@@ -673,9 +639,68 @@ export function Leaderboard() {
       const sortedPoints = await apiClient.getPointsLeaderboard();
       setPointsLeaderboard(sortedPoints);
 
-      // Grants leaderboard
+      // Grants leaderboard con cálculo de rachas optimizado
       const sortedGrants = await apiClient.getGrantsLeaderboard();
-      setGrantsLeaderboard(sortedGrants);
+      
+      // Calcular rachas reales basándose en períodos consecutivos
+      try {
+        const periods = await apiClient.getPeriods();
+        const periodsOrdered = periods.sort((a: any, b: any) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+        
+        // Obtener todos los resultados de una vez para optimizar
+        const allPeriodResults: { [periodId: string]: any[] } = {};
+        await Promise.all(
+          periodsOrdered.map(async (period: any) => {
+            try {
+              const results = await apiClient.getPeriodResults(period.id);
+              allPeriodResults[period.id] = results;
+            } catch (error) {
+              console.warn(`Error loading results for period ${period.id}`);
+              allPeriodResults[period.id] = [];
+            }
+          })
+        );
+        
+        // Calcular rachas para cada usuario
+        const grantsWithRealStreaks = sortedGrants.map((grant: any) => {
+          let maxConsecutiveStreak = 0;
+          let currentStreak = 0;
+          
+          // Revisar cada período en orden cronológico
+          for (const period of periodsOrdered) {
+            const periodResults = allPeriodResults[period.id] || [];
+            const userWonInThisPeriod = periodResults.some((result: any) => 
+              result.user?.id === grant.user.id && result.resultDays > 0
+            );
+            
+            if (userWonInThisPeriod) {
+              currentStreak += 1;
+              maxConsecutiveStreak = Math.max(maxConsecutiveStreak, currentStreak);
+            } else {
+              currentStreak = 0; // Se rompe la racha
+            }
+          }
+          
+          // Debug para el primer usuario
+          if (grant.user.id && maxConsecutiveStreak > 0) {
+            console.log(`Usuario ${grant.user.name}: racha calculada = ${maxConsecutiveStreak}, total días = ${grant.totalDays}`);
+          }
+          
+          return {
+            ...grant,
+            grantsCount: maxConsecutiveStreak // Ahora representa la racha consecutiva máxima real
+          };
+        });
+        
+        setGrantsLeaderboard(grantsWithRealStreaks);
+      } catch (error) {
+        console.warn('Error calculating real streaks, using original data');
+        setGrantsLeaderboard(sortedGrants);
+      }
+
+      // Special mentions activas
+      const activeMentions = await apiClient.getActiveSpecialMentions();
+      setSpecialMentions(activeMentions);
 
       // Recent achievements - basado en últimos resultados reales
       try {
@@ -686,7 +711,7 @@ export function Leaderboard() {
         const recentPeriods = periods.slice(0, 3); // Últimos 3 períodos
 
         // Paralelizar llamadas API para mejor rendimiento
-        const periodPromises = recentPeriods.map(async (period) => {
+        const periodPromises = recentPeriods.map(async (period: any) => {
           try {
             const [periodResults, periodNominations] = await Promise.all([
               apiClient.getPeriodResults(period.id),
@@ -773,6 +798,52 @@ export function Leaderboard() {
         setRecentAchievements([]);
       }
 
+      // Cargar reconocimientos por contribución (nominados que no ganaron HO)
+      try {
+        const periods = await apiClient.getPeriods();
+        const recentPeriods = periods.slice(0, 3);
+
+        let allNominations: any[] = [];
+        let allResults: any[] = [];
+
+        for (const period of recentPeriods) {
+          try {
+            const [periodNominations, periodResults] = await Promise.all([
+              apiClient.getNominations(period.id),
+              apiClient.getPeriodResults(period.id)
+            ]);
+
+            allNominations = [...allNominations, ...periodNominations.map((n: any) => ({ ...n, period }))];
+            allResults = [...allResults, ...periodResults];
+          } catch (error) {
+            console.warn(`Error loading period ${period.id} nominations`);
+          }
+        }
+
+        // Obtener nominados que no ganaron días pero sí fueron nominados
+        const winnersIds = allResults.filter((r: any) => r.resultDays > 0).map((r: any) => r.user?.id);
+        const nominationsByUser = allNominations.reduce((acc: any, nomination: any) => {
+          const userId = nomination.nominee.id;
+          if (!winnersIds.includes(userId)) {
+            if (!acc[userId]) {
+              acc[userId] = {
+                user: nomination.nominee,
+                nominations: [],
+              };
+            }
+            acc[userId].nominations.push(nomination);
+          }
+          return acc;
+        }, {});
+
+        const specialRecognitionsData = Object.values(nominationsByUser).slice(0, 6);
+        setSpecialRecognitions(specialRecognitionsData);
+
+      } catch (error) {
+        console.warn('Error loading special recognitions');
+        setSpecialRecognitions([]);
+      }
+
     } catch (error) {
       console.warn('Error loading leaderboard, using fallback');
       setPointsLeaderboard([]);
@@ -819,191 +890,333 @@ export function Leaderboard() {
 
   if (presentationMode) {
     const renderSlide = () => {
-      switch (currentSlide) {
-        case 0:
-          return (
-            <>
-              <div className="text-center mb-12">
-                <h1 className="text-6xl font-bold mb-4 bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 bg-clip-text text-transparent">
-                  🏆 SALÓN DE LA FAMA 🏆
-                </h1>
-                <p className="text-2xl text-gray-300">¡Celebramos a nuestros héroes del equipo!</p>
-              </div>
-              <div className="grid grid-cols-3 gap-8">
-                <div className="text-center">
-                  <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20 shadow-2xl">
-                    <Trophy className="h-20 w-20 text-yellow-400 mx-auto mb-6" />
-                    <h3 className="text-3xl font-bold text-yellow-400 mb-4">🏆 MVP DEL MES</h3>
-                    {(() => {
-                      const mvp = pointsLeaderboard.find(entry => entry.recentPoints > 0) || pointsLeaderboard[0];
-                      return mvp ? (
-                        <>
-                          <p className="text-4xl font-bold mb-2">{mvp.user?.name || 'Usuario desconocido'}</p>
-                          <p className="text-xl text-yellow-300">{mvp.recentPoints || 0} puntos este mes</p>
-                        </>
-                      ) : <p className="text-xl">Sin datos</p>;
-                    })()}
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20 shadow-2xl">
-                    <Award className="h-20 w-20 text-green-400 mx-auto mb-6" />
-                    <h3 className="text-3xl font-bold text-green-400 mb-4">🌟 MÁS RECONOCIDO</h3>
-                    {(() => {
-                      const top = grantsLeaderboard.find(entry => entry.user.role === 'MEMBER');
-                      return top ? (
-                        <>
-                          <p className="text-4xl font-bold mb-2">{top.user?.name || 'Usuario desconocido'}</p>
-                          <p className="text-xl text-green-300">{top.totalDays} días ganados</p>
-                        </>
-                      ) : <p className="text-xl">Sin datos</p>;
-                    })()}
-                  </div>
-                </div>
-                <div className="text-center">
-                  <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20 shadow-2xl">
-                    <TrendingUp className="h-20 w-20 text-blue-400 mx-auto mb-6" />
-                    <h3 className="text-3xl font-bold text-blue-400 mb-4">🔥 RACHA ACTIVA</h3>
-                    {(() => {
-                      const streak = grantsLeaderboard.find(entry => entry.user.role === 'MEMBER' && entry.grantsCount >= 2);
-                      return streak ? (
-                        <>
-                          <p className="text-4xl font-bold mb-2">{streak.user?.name || 'Usuario desconocido'}</p>
-                          <p className="text-xl text-blue-300">{streak.grantsCount} períodos seguidos</p>
-                        </>
-                      ) : <p className="text-xl">¡Sé el primero!</p>;
-                    })()}
-                  </div>
+      const activeMentions = specialMentions || [];
+      const mentionsWithImage = activeMentions.filter((mention: any) => mention.imageUrl);
+      const mentionsWithoutImage = activeMentions.filter((mention: any) => !mention.imageUrl);
+      
+      // Slides base
+      if (currentSlide === 0) {
+        // Slide de introducción
+        return (
+          <>
+            <div className="text-center mb-12">
+              <h1 className="text-6xl font-bold mb-4 bg-gradient-to-r from-yellow-400 via-pink-500 to-purple-600 bg-clip-text text-transparent">
+                🏆 SALÓN DE LA FAMA 🏆
+              </h1>
+              <p className="text-2xl text-gray-300">¡Celebramos a nuestros héroes del equipo!</p>
+            </div>
+            <div className="grid grid-cols-3 gap-8">
+              <div className="text-center">
+                <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20 shadow-2xl">
+                  <Trophy className="h-20 w-20 text-yellow-400 mx-auto mb-6" />
+                  <h3 className="text-3xl font-bold text-yellow-400 mb-4">🏆 MVP DEL MES</h3>
+                  {(() => {
+                    const mvp = pointsLeaderboard.find((entry: any) => entry.recentPoints > 0) || pointsLeaderboard[0];
+                    return mvp ? (
+                      <>
+                        <p className="text-4xl font-bold mb-2">{mvp.user?.name || 'Usuario desconocido'}</p>
+                        <p className="text-xl text-yellow-300">{mvp.recentPoints || 0} puntos este mes</p>
+                      </>
+                    ) : <p className="text-xl">Sin datos</p>;
+                  })()}
                 </div>
               </div>
-            </>
-          );
-        case 1:
-          return (
-            <div className="grid grid-cols-2 gap-12">
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 shadow-2xl">
-                <h3 className="text-4xl font-bold text-purple-400 mb-8 text-center">🌟 CAMPEONES DE INNOVACIÓN</h3>
-                <div className="space-y-6">
-                  {pointsLeaderboard.slice(0, 5).map((entry, index) => (
-                    <div key={entry.user?.id || index} className="flex items-center justify-between p-6 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 shadow-lg">
-                      <div className="flex items-center space-x-6">
-                        <div className="text-3xl font-bold text-purple-400">#{index + 1}</div>
-                        <div className="text-2xl font-semibold">{entry.user?.name || 'Usuario desconocido'}</div>
-                      </div>
-                      <div className="text-3xl font-bold text-purple-300">{entry.totalPoints} pts</div>
-                    </div>
-                  ))}
+              <div className="text-center">
+                <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20 shadow-2xl">
+                  <Award className="h-20 w-20 text-green-400 mx-auto mb-6" />
+                  <h3 className="text-3xl font-bold text-green-400 mb-4">🌟 MÁS RECONOCIDO</h3>
+                  {(() => {
+                    const top = grantsLeaderboard.find((entry: any) => entry.user.role === 'MEMBER' && entry.totalDays > 0);
+                    return top ? (
+                      <>
+                        <p className="text-4xl font-bold mb-2">{top.user?.name || 'Usuario desconocido'}</p>
+                        <p className="text-xl text-green-300">{top.totalDays} días ganados</p>
+                      </>
+                    ) : <p className="text-xl">Sin datos</p>;
+                  })()}
                 </div>
               </div>
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 shadow-2xl">
-                <h3 className="text-4xl font-bold text-green-400 mb-8 text-center">🏆 ESTRELLAS DEL RECONOCIMIENTO</h3>
-                <div className="space-y-6">
-                  {grantsLeaderboard.filter(entry => entry.user.role === 'MEMBER').slice(0, 5).map((entry, index) => (
-                    <div key={entry.user?.id || index} className="flex items-center justify-between p-6 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 shadow-lg">
-                      <div className="flex items-center space-x-6">
-                        <div className="text-3xl font-bold text-green-400">#{index + 1}</div>
-                        <div className="text-2xl font-semibold">{entry.user?.name || 'Usuario desconocido'}</div>
-                      </div>
-                      <div className="text-3xl font-bold text-green-300">{entry.totalDays} días</div>
-                    </div>
-                  ))}
+              <div className="text-center">
+                <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-8 border border-white/20 shadow-2xl">
+                  <TrendingUp className="h-20 w-20 text-blue-400 mx-auto mb-6" />
+                  <h3 className="text-3xl font-bold text-blue-400 mb-4">🏆 MÁS RECONOCIDO</h3>
+                  {(() => {
+                    const topMember = grantsLeaderboard.find((entry: any) => entry.user.role === 'MEMBER' && entry.totalDays > 0);
+                    return topMember ? (
+                      <>
+                        <p className="text-4xl font-bold mb-2">{topMember.user?.name || 'Usuario desconocido'}</p>
+                        <p className="text-xl text-blue-300">{topMember.totalDays} días ganados</p>
+                      </>
+                    ) : <p className="text-xl">¡Sé el primero!</p>;
+                  })()}
                 </div>
               </div>
             </div>
-          );
-        case 2:
-          return (
-            <div className="grid grid-cols-2 gap-12">
-              <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 shadow-2xl">
-                <h3 className="text-4xl font-bold text-orange-400 mb-8 text-center">🔥 MIEMBROS EN RACHA</h3>
-                <div className="text-center mb-6">
-                  <div className="text-6xl font-bold text-orange-400">
-                    {grantsLeaderboard.filter(entry => entry.user.role === 'MEMBER' && entry.grantsCount >= 2).length}
-                  </div>
-                  <p className="text-xl text-orange-300">miembros con racha activa</p>
-                </div>
-                <div className="space-y-4">
-                  {grantsLeaderboard.filter(entry => entry.user.role === 'MEMBER' && entry.grantsCount >= 2).slice(0, 4).map((entry, index) => (
-                    <div key={entry.user?.id || index} className="flex items-center justify-between p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 shadow-lg">
-                      <div className="text-xl font-semibold">{entry.user?.name || 'Usuario desconocido'}</div>
-                      <div className="text-xl font-bold text-orange-300">🔥 {entry.grantsCount} períodos</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="bg-white/10 rounded-2xl p-8 backdrop-blur-sm">
-                <h3 className="text-4xl font-bold text-purple-400 mb-8 text-center">📊 ESTADÍSTICAS DEL EQUIPO</h3>
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between p-4 bg-purple-500/20 rounded-xl">
-                    <span className="text-xl font-medium">Total Puntos de Innovación</span>
-                    <span className="text-3xl font-bold text-purple-300">
-                      {pointsLeaderboard.reduce((sum, entry) => sum + entry.totalPoints, 0)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-green-500/20 rounded-xl">
-                    <span className="text-xl font-medium">Total Días HO Otorgados</span>
-                    <span className="text-3xl font-bold text-green-300">
-                      {grantsLeaderboard.reduce((sum, entry) => sum + entry.totalDays, 0)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-blue-500/20 rounded-xl">
-                    <span className="text-xl font-medium">Miembros Reconocidos</span>
-                    <span className="text-3xl font-bold text-blue-300">
-                      {grantsLeaderboard.filter(entry => entry.user.role === 'MEMBER' && entry.totalDays > 0).length}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between p-4 bg-indigo-500/20 rounded-xl">
-                    <span className="text-xl font-medium">Líderes Innovando</span>
-                    <span className="text-3xl font-bold text-indigo-300">
-                      {pointsLeaderboard.filter(entry => entry.totalPoints > 0 && (entry.user.role.includes('LEADER') || entry.user.role === 'MANAGER')).length}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        case 3:
-          return (
-            <SpecialRecognitionsSlide />
-          );
-        case 4:
-          return (
-            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 shadow-2xl">
-              <h3 className="text-4xl font-bold text-blue-400 mb-8 text-center">🎉 MOMENTOS DE GLORIA RECIENTES</h3>
-              {recentAchievements.length > 0 ? (
-                <div className="grid grid-cols-2 gap-8">
-                  {recentAchievements.slice(0, 6).map((achievement) => (
-                    <div key={achievement.id} className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 shadow-lg">
-                      <div className="text-center mb-4">
-                        <div className={`rounded-full p-4 mx-auto mb-3 w-16 h-16 flex items-center justify-center ${achievement.type === 'innovation' ? 'bg-purple-500' :
-                          achievement.type === 'recognition' ? 'bg-green-500' :
-                            achievement.type === 'nominations' ? 'bg-blue-500' :
-                              'bg-orange-500'
-                          }`}>
-                          {achievement.type === 'innovation' ? <Award className="h-8 w-8 text-white" /> :
-                            achievement.type === 'recognition' ? <Trophy className="h-8 w-8 text-white" /> :
-                              achievement.type === 'nominations' ? <Users className="h-8 w-8 text-white" /> :
-                                <Medal className="h-8 w-8 text-white" />}
-                        </div>
-
-                      </div>
-                      <p className="text-xl font-semibold mb-3 text-center">{achievement.user?.name || 'Usuario desconocido'}</p>
-                      <p className="text-base text-gray-300 text-center leading-relaxed">{achievement.reason}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-16">
-                  <Award className="h-24 w-24 mx-auto mb-6 text-blue-300" />
-                  <p className="text-3xl font-bold">🌟 ¡La próxima historia de éxito podría ser tuya!</p>
-                </div>
-              )}
-            </div>
-          );
-
-        default:
-          return null;
+          </>
+        );
       }
+      
+      if (currentSlide === 1) {
+        // Slide de líderes en puntos e innovación
+        return (
+          <div className="grid grid-cols-2 gap-12">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 shadow-2xl">
+              <h3 className="text-4xl font-bold text-purple-400 mb-8 text-center">🌟 CAMPEONES DE INNOVACIÓN</h3>
+              <div className="space-y-6">
+                {pointsLeaderboard.slice(0, 5).map((entry: any, index: number) => (
+                  <div key={entry.user?.id || index} className="flex items-center justify-between p-6 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 shadow-lg">
+                    <div className="flex items-center space-x-6">
+                      <div className="text-3xl font-bold text-purple-400">#{index + 1}</div>
+                      <div className="text-2xl font-semibold">{entry.user?.name || 'Usuario desconocido'}</div>
+                    </div>
+                    <div className="text-3xl font-bold text-purple-300">{entry.totalPoints} pts</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 shadow-2xl">
+              <h3 className="text-4xl font-bold text-green-400 mb-8 text-center">🏆 ESTRELLAS DEL RECONOCIMIENTO</h3>
+              <div className="space-y-6">
+                {grantsLeaderboard.filter((entry: any) => entry.user.role === 'MEMBER').slice(0, 5).map((entry: any, index: number) => (
+                  <div key={entry.user?.id || index} className="flex items-center justify-between p-6 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 shadow-lg">
+                    <div className="flex items-center space-x-6">
+                      <div className="text-3xl font-bold text-green-400">#{index + 1}</div>
+                      <div className="text-2xl font-semibold">{entry.user?.name || 'Usuario desconocido'}</div>
+                    </div>
+                    <div className="text-3xl font-bold text-green-300">{entry.totalDays} días</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      }
+      
+      if (currentSlide === 2) {
+        // Slide de estadísticas del equipo
+        return (
+          <div className="grid grid-cols-2 gap-12">
+            <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 shadow-2xl">
+              <h3 className="text-4xl font-bold text-orange-400 mb-8 text-center">🏆 MIEMBROS RECONOCIDOS</h3>
+              <div className="text-center mb-6">
+                <div className="text-6xl font-bold text-orange-400">
+                  {grantsLeaderboard.filter((entry: any) => entry.user.role === 'MEMBER' && entry.totalDays > 0).length}
+                </div>
+                <p className="text-xl text-orange-300">miembros con días ganados</p>
+              </div>
+              <div className="space-y-4">
+                {grantsLeaderboard.filter((entry: any) => entry.user.role === 'MEMBER' && entry.totalDays > 0).slice(0, 4).map((entry: any, index: number) => (
+                  <div key={entry.user?.id || index} className="flex items-center justify-between p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 shadow-lg">
+                    <div className="text-xl font-semibold">{entry.user?.name || 'Usuario desconocido'}</div>
+                    <div className="text-xl font-bold text-orange-300">🏆 {entry.totalDays} días</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="bg-white/10 rounded-2xl p-8 backdrop-blur-sm">
+              <h3 className="text-4xl font-bold text-purple-400 mb-8 text-center">📊 ESTADÍSTICAS DEL EQUIPO</h3>
+              <div className="space-y-6">
+                <div className="flex items-center justify-between p-4 bg-purple-500/20 rounded-xl">
+                  <span className="text-xl font-medium">Total Puntos de Innovación</span>
+                  <span className="text-3xl font-bold text-purple-300">
+                    {pointsLeaderboard.reduce((sum: number, entry: any) => sum + entry.totalPoints, 0)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-4 bg-green-500/20 rounded-xl">
+                  <span className="text-xl font-medium">Total Días HO Otorgados</span>
+                  <span className="text-3xl font-bold text-green-300">
+                    {grantsLeaderboard.reduce((sum: number, entry: any) => sum + entry.totalDays, 0)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-4 bg-blue-500/20 rounded-xl">
+                  <span className="text-xl font-medium">Miembros Reconocidos</span>
+                  <span className="text-3xl font-bold text-blue-300">
+                    {grantsLeaderboard.filter((entry: any) => entry.user.role === 'MEMBER' && entry.totalDays > 0).length}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between p-4 bg-indigo-500/20 rounded-xl">
+                  <span className="text-xl font-medium">Líderes Innovando</span>
+                  <span className="text-3xl font-bold text-indigo-300">
+                    {pointsLeaderboard.filter((entry: any) => entry.totalPoints > 0 && (entry.user.role.includes('LEADER') || entry.user.role === 'MANAGER')).length}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      
+      if (currentSlide === 3) {
+        // Slide de reconocimientos por contribución
+        return (
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 shadow-2xl">
+            <h3 className="text-4xl font-bold text-yellow-400 mb-8 text-center">🌟 RECONOCIMIENTOS POR CONTRIBUCIÓN</h3>
+            <div className="text-center mb-6">
+              <p className="text-xl text-yellow-300">Cada aporte cuenta y merece ser reconocido</p>
+            </div>
+            
+            {specialRecognitions.length > 0 ? (
+              <div className="grid grid-cols-2 gap-8">
+                {specialRecognitions.slice(0, 4).map((recognition: any) => (
+                  <div key={recognition.user.id} className="bg-gradient-to-br from-yellow-400/20 to-orange-400/20 backdrop-blur-sm rounded-xl p-6 border border-yellow-400/30 shadow-lg">
+                    <div className="flex items-center space-x-4 mb-4">
+                      <div className="h-12 w-12 bg-yellow-400 rounded-full flex items-center justify-center">
+                        <span className="text-yellow-900 font-bold text-lg">
+                          {recognition.user.name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-xl font-bold text-yellow-100">{recognition.user.name}</p>
+                        <p className="text-yellow-300">{recognition.nominations.length} nominación{recognition.nominations.length !== 1 ? 'es' : ''}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      {recognition.nominations.slice(0, 2).map((nomination: any) => (
+                        <div key={nomination.id} className="bg-yellow-400/10 rounded-lg p-3">
+                          <p className="text-yellow-200 text-sm">
+                            <span className="font-bold">{nomination.nominator.name}:</span> "{nomination.reason}"
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-8">
+                <div className="bg-gradient-to-br from-yellow-400/20 to-orange-400/20 backdrop-blur-sm rounded-xl p-6 border border-yellow-400/30 shadow-lg">
+                  <div className="text-center">
+                    <h5 className="text-2xl font-bold text-yellow-100 mb-4">🎯 Nominaciones Destacadas</h5>
+                    <p className="text-yellow-200 text-lg leading-relaxed mb-4">
+                      Colaboradores que fueron reconocidos por sus aportes valiosos al equipo, 
+                      demostrando que cada contribución importa y construye nuestro éxito colectivo.
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="bg-gradient-to-br from-blue-400/20 to-purple-400/20 backdrop-blur-sm rounded-xl p-6 border border-blue-400/30 shadow-lg">
+                  <div className="text-center">
+                    <h5 className="text-2xl font-bold text-blue-100 mb-4">💎 Espíritu de Equipo</h5>
+                    <p className="text-blue-200 text-lg leading-relaxed mb-4">
+                      Personas que con su actitud, colaboración y dedicación diaria hacen que 
+                      nuestro ambiente de trabajo sea extraordinario y motivador para todos.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            <div className="text-center mt-8">
+              <p className="text-2xl font-bold text-white">
+                🙌 ¡Gracias por hacer la diferencia! 🙌
+              </p>
+            </div>
+          </div>
+        );
+      }
+      
+      // Slides dinámicos para menciones especiales con imagen
+      const imageSlideIndex = currentSlide - 4;
+      if (imageSlideIndex >= 0 && imageSlideIndex < mentionsWithImage.length) {
+        const mention = mentionsWithImage[imageSlideIndex];
+        return (
+          <div className="flex items-center justify-center h-full">
+            <div className="bg-gradient-to-br from-yellow-400/20 via-orange-400/20 to-pink-400/20 backdrop-blur-sm rounded-3xl p-12 border border-yellow-400/30 shadow-2xl max-w-5xl">
+              <div className="text-center mb-8">
+                <h3 className="text-6xl font-bold text-yellow-400 mb-4">🌟 MENCIÓN ESPECIAL</h3>
+                <h4 className="text-4xl font-bold text-white mb-6">{mention.title}</h4>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-12 items-center">
+                <div className="text-center">
+                  <img 
+                    src={mention.imageUrl} 
+                    alt={mention.title}
+                    className="w-full h-96 object-cover rounded-2xl shadow-2xl border-4 border-yellow-400/30"
+                    onError={(e: any) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
+                
+                <div className="space-y-8">
+                  <p className="text-2xl text-yellow-100 leading-relaxed">
+                    {mention.description}
+                  </p>
+                  
+                  <div className="text-center">
+                    <div className="inline-block bg-yellow-400 text-yellow-900 px-8 py-4 rounded-full font-bold text-2xl shadow-lg">
+                      ¡Felicitaciones! 🎉
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      
+      // Slide para menciones sin imagen (si las hay)
+      const noImageSlideIndex = currentSlide - 4 - mentionsWithImage.length;
+      if (noImageSlideIndex === 0 && mentionsWithoutImage.length > 0) {
+        return (
+          <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 shadow-2xl">
+            <h3 className="text-4xl font-bold text-blue-400 mb-8 text-center">🎖️ RECONOCIMIENTOS ESPECIALES</h3>
+            {specialMentions?.length > 0 ? (
+              <div className="grid grid-cols-2 gap-8">
+                {mentionsWithoutImage.map((mention: any) => (
+                  <div key={mention.id} className="bg-gradient-to-br from-blue-400/20 to-purple-400/20 backdrop-blur-sm rounded-xl p-6 border border-blue-400/30 shadow-lg">
+                    <div className="text-center">
+                      <h5 className="text-2xl font-bold text-blue-100 mb-4">{mention.title}</h5>
+                      <p className="text-blue-200 text-lg leading-relaxed mb-4">{mention.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-16">
+                <Award className="h-24 w-24 mx-auto mb-6 text-blue-300" />
+                <p className="text-3xl font-bold">🌟 ¡Próximamente tendremos reconocimientos especiales!</p>
+              </div>
+            )}
+          </div>
+        );
+      }
+      
+      // Slide final de momentos de gloria (siempre el último)
+      return (
+        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 shadow-2xl">
+          <h3 className="text-4xl font-bold text-blue-400 mb-8 text-center">🎉 MOMENTOS DE GLORIA RECIENTES</h3>
+          {recentAchievements.length > 0 ? (
+            <div className="grid grid-cols-2 gap-8">
+              {recentAchievements.slice(0, 6).map((achievement: any) => (
+                <div key={achievement.id} className="bg-white/10 backdrop-blur-sm rounded-xl p-6 border border-white/20 shadow-lg">
+                  <div className="text-center mb-4">
+                    <div className={`rounded-full p-4 mx-auto mb-3 w-16 h-16 flex items-center justify-center ${achievement.type === 'innovation' ? 'bg-purple-500' :
+                      achievement.type === 'recognition' ? 'bg-green-500' :
+                        achievement.type === 'nominations' ? 'bg-blue-500' :
+                          'bg-orange-500'
+                      }`}>
+                      {achievement.type === 'innovation' ? <Award className="h-8 w-8 text-white" /> :
+                        achievement.type === 'recognition' ? <Trophy className="h-8 w-8 text-white" /> :
+                          achievement.type === 'nominations' ? <Users className="h-8 w-8 text-white" /> :
+                            <Medal className="h-8 w-8 text-white" />}
+                    </div>
+
+                  </div>
+                  <p className="text-xl font-semibold mb-3 text-center">{achievement.user?.name || 'Usuario desconocido'}</p>
+                  <p className="text-base text-gray-300 text-center leading-relaxed">{achievement.reason}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-16">
+              <Award className="h-24 w-24 mx-auto mb-6 text-blue-300" />
+              <p className="text-3xl font-bold">🌟 ¡La próxima historia de éxito podría ser tuya!</p>
+            </div>
+          )}
+        </div>
+      );
     };
 
     return (
@@ -1063,7 +1276,7 @@ export function Leaderboard() {
       </div>
 
       {/* Estilos globales para animaciones */}
-      <style jsx>{`
+      <style>{`
         @keyframes borderGradient {
           0%, 100% { background-position: 0% 50%; }
           50% { background-position: 100% 50%; }
@@ -1184,7 +1397,7 @@ export function Leaderboard() {
       </div>
 
       {/* Reconocimientos por Contribución */}
-      <RecongnitionsSection />
+      <RecognitionsSection />
 
       {/* Recent achievements */}
       <RecentAchievementsSection recentAchievements={recentAchievements} safeFormat={safeFormat} />

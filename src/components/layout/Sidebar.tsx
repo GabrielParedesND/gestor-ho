@@ -13,7 +13,8 @@ import {
   TrendingUp,
   Shield,
   FolderOpen,
-  Clock
+  Clock,
+  Star
 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSettings } from '../../contexts/SettingsContext';
@@ -30,6 +31,7 @@ const navigation = [
   // Beneficios y reconocimientos
   { name: 'Mis Días HO', href: '/grants', icon: Calendar, roles: ['LEADER', 'MEMBER'] },
   { name: 'Iniciativas', href: '/initiatives', icon: Target, roles: ['LEADER', 'MANAGER', 'MEMBER'] },
+  { name: 'Menciones Especiales', href: '/special-mentions', icon: Star, roles: ['LEADER', 'MANAGER'] },
   { name: 'Leaderboard', href: '/leaderboard', icon: Trophy, roles: ['ALL', 'VIEWER'] },
   
   // Administración

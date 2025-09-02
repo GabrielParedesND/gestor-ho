@@ -25,3 +25,7 @@ dist-ssr
 .env
 
 /src/generated/prisma
+
+# Uploads directory
+public/uploads/
+uploads/
